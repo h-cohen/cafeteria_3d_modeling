@@ -64,10 +64,10 @@ class CalibrationConfig:
 @dataclass
 class ReconstructionConfig:
     algorithm: str = "tv"  # sirt | tv | mlem | layered
-    n_iter: int = 400
+    n_iter: int = 150
     nonneg: bool = True
     chi2_target: float = 1.0  # discrepancy-principle stop for sirt/mlem
-    tv_alpha: float = 0.5  # TV weight in mean-normalized data-term units
+    tv_alpha: float = 0.01  # SIRT-TV denoise threshold, as a fraction of x's p95
     tv_z_weight: float = 0.5  # anisotropic TV: relative weight of z gradients
     # 'layered': candidate layer heights (m) scanned and scored by cross-position CV
     layered_zs: tuple = (2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4)

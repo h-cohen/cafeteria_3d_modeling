@@ -1,0 +1,83 @@
+{
+  "data": {
+    "sky": "data/HistsOutSkyRoofRuns37-77.root",
+    "pos0": "data/HistsOutDataCafePos0.root",
+    "pos1": "data/HistsOutDataCafePos1.root"
+  },
+  "binning": {
+    "hist": "txty",
+    "t_max": 1.0,
+    "rebin": 8
+  },
+  "calibration": {
+    "min_sky": 25.0,
+    "min_cafe": 5.0,
+    "norm_quantile": 0.95,
+    "norm_smooth_bins": 1.0
+  },
+  "geometry": {
+    "poses": {
+      "pos0": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0,
+        "yaw_deg": 0.0
+      },
+      "pos1": {
+        "x": 1.958939110916244,
+        "y": 0.3398993059261793,
+        "z": 0.0,
+        "yaw_deg": -0.05053697299582177
+      }
+    },
+    "ceiling_z_prior_m": 3.0,
+    "grid_z_m": [
+      1.5,
+      5.0
+    ],
+    "grid_spacing_m": 0.15,
+    "grid_xy_m": [
+      [
+        -3.0,
+        5.0
+      ],
+      [
+        -3.0,
+        3.0
+      ]
+    ],
+    "aperture_m": 0.65,
+    "n_aperture_sub": 4,
+    "detector_height_m": 0.8
+  },
+  "reconstruction": {
+    "algorithm": "tv",
+    "n_iter": 150,
+    "nonneg": true,
+    "chi2_target": 1.0,
+    "tv_alpha": 0.06,
+    "tv_z_weight": 2.0,
+    "layered_zs": [
+      2.2,
+      2.4,
+      2.6,
+      2.8,
+      3.0,
+      3.2,
+      3.4,
+      3.6,
+      3.8,
+      4.0,
+      4.2,
+      4.4
+    ],
+    "layered_thickness": 0.3,
+    "holdout_fraction": 0.2,
+    "seed": 42
+  },
+  "notes": "Production config: geometry refined by muontomo.selfcal Stage B; TV hyperparameters chosen by cv_pearson sweep in runs/real_tv_*.",
+  "_snapshot": {
+    "config_hash": "6516e8991104",
+    "git": "b25a0b2"
+  }
+}
