@@ -1,0 +1,6 @@
+uproot>=5.0
+numpy
+scipy
+matplotlib
+pytest
+playwright

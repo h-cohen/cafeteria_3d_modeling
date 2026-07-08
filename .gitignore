@@ -3,3 +3,4 @@ __pycache__/
 runs/
 phantoms/
 !runs/.gitkeep
+ratio_*.png

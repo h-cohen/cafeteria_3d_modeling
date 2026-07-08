@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, median_filter
 
 files = {
-    'pos0': '../../01_data/processed/2026_tau_cafe/HistsOutDataCafePos0.root',
-    'pos1': '../../01_data/processed/2026_tau_cafe/HistsOutDataCafePos1.root', 
-    'sky': '../../01_data/processed/2026_tau_cafe/HistsOutSkyRoofRuns37-77.root'
+    'pos0': 'data/HistsOutDataCafePos0.root',
+    'pos1': 'data/HistsOutDataCafePos1.root',
+    'sky': 'data/HistsOutSkyRoofRuns37-77.root'
 }
 
 def analyze_and_plot(hist_name, out_prefix, filter_sigma=0):
