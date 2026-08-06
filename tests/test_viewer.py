@@ -34,5 +34,11 @@ def test_viewer_smoke(small_run):
     build_viewer(small_run)
     report = run_smoke(small_run)
     assert not report["errors"]
-    assert report["initial_state"]["triangles"] > 0
-    assert len(report["screenshots"]) == 4
+    assert report["initial_state"]["terrainTriangles"] > 0
+    assert report["initial_state"]["sliceVisible"]
+    assert report["after_threshold_change"]["triangles"] > 0
+    # phantom runs carry their measured data, so the backprojection layer and
+    # its extra screenshot must be present
+    assert report["initial_state"]["hasDataLayer"]
+    assert report["data_surface_state"]["terrainTriangles"] > 0
+    assert len(report["screenshots"]) == 5

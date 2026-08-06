@@ -52,7 +52,13 @@ def run_smoke(run_dir: str | Path) -> dict:
 
         state = page.evaluate("window.__viewerState()")
         report["initial_state"] = state
-        assert state["triangles"] > 0, "marching cubes produced zero triangles"
+        # The default view is the height-relief terrain (color + shape both encode
+        # density), not a marching-cubes isosurface -- that's a speckled blob at any
+        # threshold since reconstruction noise is close in amplitude to the real
+        # beam signal. The isosurface tools are opt-in (see the threshold-change
+        # step below), so triangles==0 here is expected.
+        assert state["terrainTriangles"] > 0, "terrain produced zero triangles"
+        assert state["sliceVisible"], "terrain must be visible by default"
 
         for preset in ["iso", "top", "front"]:
             page.evaluate(f"window.__frameCamera('{preset}')")
@@ -62,10 +68,23 @@ def run_smoke(run_dir: str | Path) -> dict:
             report["screenshots"].append(str(path))
             _assert_non_blank(path)
 
-        page.evaluate("window.__setState({threshold: 0.7})")
+        if state.get("hasDataLayer"):
+            page.evaluate("window.__setState({surface: 'data'})")
+            page.wait_for_timeout(150)
+            state_data = page.evaluate("window.__viewerState()")
+            report["data_surface_state"] = state_data
+            assert state_data["terrainTriangles"] > 0, "data-surface terrain produced zero triangles"
+            path = img_dir / "viewer_data.png"
+            page.screenshot(path=str(path))
+            report["screenshots"].append(str(path))
+            _assert_non_blank(path)
+            page.evaluate("window.__setState({surface: 'recon'})")
+
+        page.evaluate("window.__setState({threshold: 0.4, threshold2: 0.4, showHigh: true})")
         page.wait_for_timeout(150)
         state2 = page.evaluate("window.__viewerState()")
         report["after_threshold_change"] = state2
+        assert state2["triangles"] > 0, "marching cubes produced zero triangles at threshold=0.4"
         path = img_dir / "viewer_iso_hi.png"
         page.screenshot(path=str(path))
         report["screenshots"].append(str(path))

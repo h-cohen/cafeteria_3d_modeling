@@ -159,6 +159,18 @@ def evaluate_run(run_dir: str | Path, truth_path: str | Path | None = None,
     else:
         card["truth"] = None
 
+    # ---- beam-level verification (model-free) ----
+    # Triangulates the ceiling height from beam parallax between the poses and
+    # matches beam positions in the raw data against the reconstruction --
+    # the reconstruction is only trusted if it reproduces the beams the raw
+    # transmission maps show, where they show them.
+    try:
+        from .beams import verify_beams
+
+        card["beams"] = verify_beams(run)
+    except Exception as e:
+        card["beams"] = {"error": str(e)}
+
     card["headline"] = {
         "chi2": round(fid["chi2_ndof"], 3),
         "cv_pearson": round(cvd.get("cv_pearson", float("nan")), 3),
@@ -166,11 +178,19 @@ def evaluate_run(run_dir: str | Path, truth_path: str | Path | None = None,
         "z_width_m": round(card["volume"]["z_eff_width_m"], 2),
         "stripe_contrast": round(st["volume_slice"]["contrast"], 3),
     }
+    if isinstance(card["beams"], dict) and "parallax_z_x_m" in card["beams"]:
+        card["headline"]["parallax_z_m"] = card["beams"]["parallax_z_x_m"]
+        card["headline"]["beam_offset_m"] = card["beams"]["mean_abs_beam_offset_m"]
     if card["truth"]:
         card["headline"]["truth_ssim"] = round(card["truth"]["ssim3d"], 3)
 
     (run / "metrics.json").write_text(json.dumps(card, indent=2, default=float) + "\n")
     render_run_images(run, tmaps, lam_pred, omaps, rho, grid, card)
+    # Model-free companion image: the measured opacity backprojected onto the
+    # ceiling plane -- the reference the reconstruction should resemble.
+    from .backproject import render_backprojection_png
+
+    render_backprojection_png(run)
     return card
 
 

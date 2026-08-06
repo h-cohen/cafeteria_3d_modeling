@@ -36,6 +36,13 @@ class GeometryConfig:
     grid_z_m: tuple = (1.5, 5.0)
     grid_spacing_m: float = 0.10
     grid_xy_m: tuple | None = None  # ((x0,x1),(y0,y1)) or None -> auto from footprints
+    # Sub-box of grid_xy_m to actually display in the 3D viewer, or None -> show
+    # all of grid_xy_m. The solver grid is deliberately kept wide so the
+    # limited-angle edge-of-coverage bias (SIRT/TV pools spurious mass at
+    # whichever boundary is worst-constrained) lands away from the real
+    # structure; this lets the viewer crop that margin out without shrinking
+    # the grid the reconstruction actually runs on.
+    viewer_crop_xy_m: tuple | None = None
     aperture_m: float = 0.65
     n_aperture_sub: int = 4  # sub-rays per axis across the aperture (n^2 total)
     detector_height_m: float = 0.8  # layer separation; sets the angle-dependent aperture
@@ -110,7 +117,7 @@ class RunConfig:
             elif f.name == "calibration":
                 v = CalibrationConfig(**v)
             elif f.name == "geometry":
-                v = GeometryConfig(**_tupled(v, ("grid_z_m", "grid_xy_m")))
+                v = GeometryConfig(**_tupled(v, ("grid_z_m", "grid_xy_m", "viewer_crop_xy_m")))
             elif f.name == "reconstruction":
                 v = ReconstructionConfig(**_tupled(v, ("layered_zs",)))
             kwargs[f.name] = v

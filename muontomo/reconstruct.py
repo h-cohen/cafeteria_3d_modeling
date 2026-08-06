@@ -7,7 +7,7 @@ same cached A serves the full fit, per-position cross-validation fits, and the
 random-bin holdout fit.
 
 Usage:
-    python -m muontomo.reconstruct --config configs/default.json --out runs/exp01
+    python -m muontomo.reconstruct --config configs/production.json --out runs/exp01
 """
 
 from __future__ import annotations
@@ -291,8 +291,16 @@ def layered_fit(
     j0 = np.searchsorted(ys - 1e-9, ly[0])
     ni = min(len(lx), len(xs) - i0)
     nj = min(len(ly), len(ys) - j0)
-    # layer opacity-thickness is spread over one full-grid voxel depth
-    x3[i0 : i0 + ni, j0 : j0 + nj, iz] = layer2d[:ni, :nj] * (rc.layered_thickness / fwd.grid.spacing)
+    # Spread the fitted layer across the number of z-voxels that actually span its
+    # physical thickness, so the embedded structure has real volumetric extent
+    # instead of being a single voxel with an inflated amplitude (which renders as
+    # a flat sheet with no 3D shape). Each voxel keeps the fitted opacity density,
+    # so total optical depth (opacity * spacing * n_vox) still matches the fitted
+    # layer's opacity * layered_thickness.
+    n_vox = max(1, int(round(rc.layered_thickness / fwd.grid.spacing)))
+    iz0 = max(0, min(iz - n_vox // 2, fwd.grid.shape[2] - n_vox))
+    iz1 = iz0 + n_vox
+    x3[i0 : i0 + ni, j0 : j0 + nj, iz0:iz1] = layer2d[:ni, :nj, None]
     return x3.ravel(), {
         "offsets": info["offsets"],
         "chi2_history": info["chi2_history"],

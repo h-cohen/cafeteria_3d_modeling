@@ -4,3 +4,11 @@ scipy
 matplotlib
 pytest
 playwright
+
+# Optional: ML enhancement of the reconstruction surface (muontomo.enhance).
+# The guided-filter technique and the whole core pipeline run without these;
+# only the `dip` and `pnp` methods need them. Install the torch CPU wheel:
+#   uv pip install torch --index-url https://download.pytorch.org/whl/cpu
+# torch          # Deep Image Prior (dip)
+# scikit-image   # Plug-and-Play NLM denoiser (pnp)
+# pywavelets     # dependency of skimage.restoration.estimate_sigma

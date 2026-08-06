@@ -18,7 +18,7 @@ injected pose error (tests/test_selfcal.py); on real data it is bounded to
 +-bounds_m / +-bounds_deg around the prior so it refines rather than wanders.
 
 Usage:
-    python -m muontomo.selfcal --config configs/default.json --out runs/selfcal01
+    python -m muontomo.selfcal --config configs/production.json --out runs/selfcal01
 """
 
 from __future__ import annotations

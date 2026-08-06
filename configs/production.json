@@ -24,26 +24,36 @@
         "yaw_deg": 0.0
       },
       "pos1": {
-        "x": 1.958939110916244,
-        "y": 0.3398993059261793,
+        "x": 1.7753422154821907,
+        "y": 0.7202572442429569,
         "z": 0.0,
-        "yaw_deg": -0.05053697299582177
+        "yaw_deg": 0.04747463687999935
       }
     },
-    "ceiling_z_prior_m": 3.0,
+    "ceiling_z_prior_m": 7.0,
     "grid_z_m": [
-      1.5,
-      5.0
+      1.0,
+      9.0
     ],
-    "grid_spacing_m": 0.15,
+    "grid_spacing_m": 0.08,
     "grid_xy_m": [
       [
-        -3.0,
+        -5.0,
+        7.0
+      ],
+      [
+        -5.0,
+        5.0
+      ]
+    ],
+    "viewer_crop_xy_m": [
+      [
+        -5.0,
         5.0
       ],
       [
-        -3.0,
-        3.0
+        -5.0,
+        5.0
       ]
     ],
     "aperture_m": 0.65,
@@ -51,33 +61,22 @@
     "detector_height_m": 0.8
   },
   "reconstruction": {
-    "algorithm": "tv",
+    "algorithm": "layered",
     "n_iter": 150,
     "nonneg": true,
     "chi2_target": 1.0,
-    "tv_alpha": 0.06,
+    "tv_alpha": 0.08,
     "tv_z_weight": 2.0,
     "layered_zs": [
-      2.2,
-      2.4,
-      2.6,
-      2.8,
-      3.0,
-      3.2,
-      3.4,
-      3.6,
-      3.8,
-      4.0,
-      4.2,
-      4.4
+      7.0
     ],
     "layered_thickness": 0.3,
     "holdout_fraction": 0.2,
     "seed": 42
   },
-  "notes": "Production config: geometry refined by muontomo.selfcal Stage B; TV hyperparameters chosen by cv_pearson sweep in runs/real_tv_*.",
+  "notes": "Ceiling height 7.0m: user prior ~7m, confirmed by model-free beam parallax (x-baseline: z=7.10 corr 0.85; y-baseline: z=7.00 corr 0.94, see muontomo.beams) AND by the layered CV height scan once heights up to 7.4 were offered (cv_mean 2.48 @ 7.0 vs 2.80 @ 6.6; the earlier 6.6 choice was a CV local optimum). grid_spacing_m=0.08 (fine) required to resolve beam periodicity -- 0.15m aliased. layered_fit embeds the fitted layer across the z-voxels spanning layered_thickness. Beam positions in the reconstruction verified against raw per-detector transmission profiles (images/beam_verify.png): 5 beams, ~1.7m pitch, mean |offset| ~0.14m. tv_alpha=0.08 (swept 0.03-0.25): best beam accuracy (offset 0.10m vs 0.135 at 0.03), chi2 2.09, keeps all 5 beams; 0.25 over-regularizes (loses a beam, offset 0.45). Viewer display blur halved to 0.5*bin_footprint (~0.12m) since the stronger TV solve is already clean -- beams read as thin straight lines matching the single-detector 2D image instead of fat wavy blobs.",
   "_snapshot": {
-    "config_hash": "6516e8991104",
-    "git": "b25a0b2"
+    "config_hash": "b7d016dc9d4d",
+    "git": "022ec77"
   }
 }

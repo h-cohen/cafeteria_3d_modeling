@@ -7,6 +7,8 @@
          border-radius: 8px; max-width: 60vw; pointer-events: none; }
   #hud-title { font-weight: 600; font-size: 14px; }
   #hud-metrics { font-size: 12px; color: #a9b4bd; margin-top: 4px; }
+  #hud-colorbar { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: #a9b4bd; }
+  #colorbar { border-radius: 3px; }
   #panel { position: fixed; bottom: 10px; left: 10px; background: rgba(20,24,28,0.85); padding: 12px 16px;
            border-radius: 8px; font-size: 12px; display: grid; gap: 8px; min-width: 260px; }
   #panel label { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
@@ -20,9 +22,25 @@
 <div id="hud">
   <div id="hud-title"></div>
   <div id="hud-metrics"></div>
+  <div id="hud-colorbar">
+    <span id="colorbar-lo"></span>
+    <canvas id="colorbar" width="160" height="12"></canvas>
+    <span id="colorbar-hi"></span>
+    <span id="colorbar-unit">density (1/m)</span>
+  </div>
 </div>
 <div id="panel">
+  <label id="surface-row">surface
+    <select id="surface">
+      <option value="recon">3D reconstruction</option>
+      <option value="dip" id="surface-dip-opt">reconstruction (DIP enhanced)</option>
+      <option value="data">measured data (backprojection)</option>
+    </select>
+  </label>
+  <label id="beams-row"><input id="toggle-beams" type="checkbox" checked> verified beam guides (from data)</label>
+  <label><input id="toggle-shaded" type="checkbox"> shaded relief (3D lighting)</label>
   <label>low iso <input id="thresh-lo" type="range" min="0.01" max="0.98" step="0.005"></label>
+  <label><input id="toggle-lo" type="checkbox"> show low-iso surface</label>
   <label>high iso <input id="thresh-hi" type="range" min="0.01" max="0.98" step="0.005"></label>
   <label><input id="toggle-hi" type="checkbox" checked> show high-iso surface</label>
   <label>z-slice <input id="zslice" type="range" min="0" max="1" step="1"></label>
