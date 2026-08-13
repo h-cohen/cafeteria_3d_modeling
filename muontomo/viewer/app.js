@@ -13,19 +13,31 @@
     for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
     return arr;
   }
-  const field = decodeVolume(V.data_b64); // uint8, 0..255 maps to [0, value_range[1]]
+  const fieldLayer = decodeVolume(V.data_b64); // uint8, 0..255 maps to [0, value_range[1]]
+  // Optional full-room 3D voxel volume (same grid): swap it in for the iso-surfaces
+  // and z-slice to inspect the whole voxel cloud instead of the thin ceiling layer.
+  const fieldFull = V.volume_full_b64 ? decodeVolume(V.volume_full_b64) : null;
+  let field = fieldLayer;                // active volume driving iso-surfaces + z-slice
+  let quantScale = V.quant_scale;        // active byte->density scale for the colorbar
   // Optional model-free layer: mean per-detector backprojection of measured
   // opacity onto the ceiling plane, on the same xy grid (nx*ny uint8).
   const dataLayer = V.backproject_b64 ? decodeVolume(V.backproject_b64) : null;
   // Optional DIP-enhanced reconstruction layer (nx*ny uint8), same grid.
   const dipLayer = V.dip_b64 ? decodeVolume(V.dip_b64) : null;
+  // Optional artifact-cleaned layer (boundary blobs removed, denoised, sharpened).
+  const cleanLayer = V.clean_b64 ? decodeVolume(V.clean_b64) : null;
+  // Optional single-detector reconstruction layers (nx*ny uint8, same grid):
+  // the SIRT+TV solve trained on ONE position only, for comparing one detector
+  // vs the two-detector fusion.
+  const pos0Layer = V.pos0_b64 ? decodeVolume(V.pos0_b64) : null;
+  const pos1Layer = V.pos1_b64 ? decodeVolume(V.pos1_b64) : null;
 
   // ---- three.js scene ----
   const container = document.getElementById("viewport");
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x101418);
   const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   container.appendChild(renderer.domElement);
 
@@ -136,6 +148,8 @@
     clipBelow: false,
     surface: "recon", // "recon" | "data" (measured backprojection, if embedded)
     shaded: false, // terrain: false = flat colormap colors, true = lit relief
+    showVoxels: false, // render the whole volume as a colored voxel point cloud
+    voxelCut: (V.suggested_iso[0] || 20) / 255, // density cutoff for the voxel cloud
   };
 
   function rebuild() {
@@ -172,8 +186,55 @@
     }
     lastTriangles = (meshLo ? meshLo.geometry.attributes.position.count / 3 : 0) +
                     (meshHi ? meshHi.geometry.attributes.position.count / 3 : 0);
+    buildVoxels();
   }
   let lastTriangles = 0;
+
+  // Full-3D voxel cloud: every voxel of the ACTIVE volume above the density cutoff
+  // is drawn as a colour-coded point (viridis by density), across all z -- a true
+  // 3D voxel view rather than a single slice. The z-slice slider + "clip volume
+  // below slice" cut the cloud at any height. Faint by design (it is a diffuse,
+  // limited-angle volume); raise the cutoff to keep only the densest structure.
+  let voxelCloud = null;
+  let lastVoxelCount = 0;
+  function buildVoxels() {
+    if (voxelCloud) {
+      scene.remove(voxelCloud);
+      voxelCloud.geometry.dispose();
+      voxelCloud.material.dispose();
+      voxelCloud = null;
+    }
+    lastVoxelCount = 0;
+    if (!state.showVoxels) return;
+    const lo = state.voxelCut * 255;
+    const cutZ = origin[2] + state.zSlice * spacing; // world-z cut plane
+    const positions = [], colors = [];
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iy = 0; iy < ny; iy++) {
+        const base = (ix * ny + iy) * nz;
+        for (let iz = 0; iz < nz; iz++) {
+          const v = field[base + iz];
+          if (v < lo) continue;
+          const wz = origin[2] + iz * spacing;
+          if (state.clipBelow && wz < cutZ) continue; // cut everything below the plane
+          const p = toThree(origin[0] + (ix + 0.5) * spacing, origin[1] + (iy + 0.5) * spacing, wz);
+          positions.push(p.x, p.y, p.z);
+          const c = viridis(v / 255);
+          colors.push(c[0] / 255, c[1] / 255, c[2] / 255);
+        }
+      }
+    }
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geom.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    const mat = new THREE.PointsMaterial({
+      size: spacing * 1.6, vertexColors: true, transparent: true,
+      opacity: 0.8, sizeAttenuation: true, depthWrite: false,
+    });
+    voxelCloud = new THREE.Points(geom, mat);
+    scene.add(voxelCloud);
+    lastVoxelCount = positions.length / 3;
+  }
 
   // Height-relief terrain of the slab at zSlice: color AND height both encode
   // density (viridis LUT), so the beam pattern reads as raised, colored ridges
@@ -182,19 +243,29 @@
   // value), just given shape instead of staying flat. The relief height is a
   // visualization encoding, not the layer's real physical thickness (which is
   // shown separately via the iso-surface tools and the z-width metric).
-  const VIRIDIS = [[68,1,84],[71,13,96],[72,24,106],[72,35,116],[71,46,124],[69,56,130],[66,65,134],[62,74,137],[58,84,140],[54,93,141],[50,101,142],[46,109,142],[43,117,142],[40,125,142],[37,132,142],[34,140,141],[31,148,140],[30,156,137],[32,163,134],[37,171,130],[46,179,124],[58,186,118],[72,193,110],[88,199,101],[108,205,90],[127,211,78],[147,215,65],[168,219,52],[192,223,37],[213,226,26],[234,229,26],[253,231,37]];
+  // Colour palettes for the density LUT (terrain, colorbar, voxels). Selectable in
+  // the panel; grayscale is computed. viridis(t) always reads the ACTIVE one.
+  const PALETTES = {
+    viridis: [[68,1,84],[71,13,96],[72,24,106],[72,35,116],[71,46,124],[69,56,130],[66,65,134],[62,74,137],[58,84,140],[54,93,141],[50,101,142],[46,109,142],[43,117,142],[40,125,142],[37,132,142],[34,140,141],[31,148,140],[30,156,137],[32,163,134],[37,171,130],[46,179,124],[58,186,118],[72,193,110],[88,199,101],[108,205,90],[127,211,78],[147,215,65],[168,219,52],[192,223,37],[213,226,26],[234,229,26],[253,231,37]],
+    inferno: [[0,0,4],[22,11,57],[66,10,104],[106,23,110],[147,38,103],[188,55,84],[221,81,58],[243,120,25],[252,165,10],[246,215,70],[252,255,164]],
+    magma: [[0,0,4],[24,15,62],[68,15,118],[114,31,129],[158,47,127],[205,64,113],[240,96,93],[253,149,103],[254,197,145],[252,238,199],[252,253,191]],
+    turbo: [[48,18,59],[64,84,200],[35,140,241],[27,193,207],[70,229,127],[157,241,44],[224,213,35],[253,150,32],[236,79,15],[176,20,4],[122,4,3]],
+    grayscale: null, // computed below
+  };
+  let activeLUT = PALETTES.viridis;
   function viridis(t) {
     t = Math.max(0, Math.min(1, t));
-    const n = VIRIDIS.length - 1;
+    if (!activeLUT) return [t * 255, t * 255, t * 255]; // grayscale
+    const n = activeLUT.length - 1;
     const i = Math.min(n - 1, Math.floor(t * n));
     const f = t * n - i;
-    const a = VIRIDIS[i], b = VIRIDIS[i + 1];
+    const a = activeLUT[i], b = activeLUT[i + 1];
     return [a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1]), a[2] + f * (b[2] - a[2])];
   }
   // HUD colorbar: same LUT as the terrain, labeled with the physical density
   // values (byte / quant_scale) at the normalization endpoints, so the 3D view
   // is quantitatively readable like the 2D matplotlib slice.
-  function updateColorbar(loByte, hiByte, useData, useDip) {
+  function updateColorbar(loByte, hiByte, scale, useData) {
     const canvas = document.getElementById("colorbar");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -203,9 +274,9 @@
       ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
       ctx.fillRect(px, 0, 1, canvas.height);
     }
-    const scale = (useData ? V.backproject_scale : useDip ? V.dip_scale : V.quant_scale) || 1;
-    document.getElementById("colorbar-lo").textContent = (loByte / scale).toFixed(2);
-    document.getElementById("colorbar-hi").textContent = (hiByte / scale).toFixed(2);
+    const s = scale || 1;
+    document.getElementById("colorbar-lo").textContent = (loByte / s).toFixed(2);
+    document.getElementById("colorbar-hi").textContent = (hiByte / s).toFixed(2);
     document.getElementById("colorbar-unit").textContent =
       useData ? "measured opacity -ln(T)" : "density (1/m)";
   }
@@ -219,14 +290,18 @@
 
   function updateSlice() {
     const iz = Math.max(0, Math.min(nz - 1, state.zSlice));
-    if (terrainMesh) { group.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
+    if (terrainMesh) { scene.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
 
     // Terrain source: the reconstruction's z-slice, the measured-data
     // backprojection (model-free), or the DIP-enhanced layer -- the latter two
     // are 2D layers on the same xy grid, always at the fitted layer height.
     const useData = state.surface === "data" && dataLayer;
     const useDip = state.surface === "dip" && dipLayer;
-    const layer2d = useData ? dataLayer : useDip ? dipLayer : null;
+    const useClean = state.surface === "clean" && cleanLayer;
+    const useP0 = state.surface === "pos0" && pos0Layer;
+    const useP1 = state.surface === "pos1" && pos1Layer;
+    const layer2d = useData ? dataLayer : useDip ? dipLayer : useClean ? cleanLayer
+      : useP0 ? pos0Layer : useP1 ? pos1Layer : null;
     const rawAt = (ix, iy) => layer2d ? layer2d[ix * ny + iy] : field[(ix * ny + iy) * nz + iz];
 
     // Robust two-sided normalization: [p30, p92] of the slice's NONZERO values
@@ -249,12 +324,17 @@
     // [p35, p85] window clamps DIP's upper 15% to flat yellow and buries the
     // beams. A higher, wider window [p30, p97] spends the color range on DIP's
     // full tonal spread -- all five beams pop as distinct bright stripes.
-    const pLo = useDip ? 0.30 : 0.35;
-    const pHi = useDip ? 0.97 : 0.85;
+    const bimodal = useDip || useClean;  // sharp/denoised layers top out lower -> wider window
+    const pLo = bimodal ? 0.30 : 0.35;
+    const pHi = bimodal ? 0.97 : 0.85;
     const vlo = nzv.length ? nzv[Math.floor(pLo * (nzv.length - 1))] : 0;
     const vhi = Math.max(nzv.length ? nzv[Math.floor(pHi * (nzv.length - 1))] : 1, vlo + 1);
     const norm = (raw) => Math.max(0, Math.min((raw - vlo) / (vhi - vlo), 1.0));
-    updateColorbar(vlo, vhi, useData, useDip);
+    // Each surface source stores byte values against its own scale (byte/scale =
+    // physical density, or opacity for the measured backprojection).
+    const surfScale = useData ? V.backproject_scale : useDip ? V.dip_scale : useClean ? V.clean_scale
+      : useP0 ? V.pos0_scale : useP1 ? V.pos1_scale : quantScale;
+    updateColorbar(vlo, vhi, surfScale, useData);
 
     // Grid vertices + a "skirt": every perimeter vertex gets a twin dropped to
     // the layer base, so the terrain's silhouette is a solid wall instead of a
@@ -267,7 +347,10 @@
         const v = norm(rawAt(ix, iy));
         const wx = origin[0] + (ix + 0.5) * spacing;
         const wy = origin[1] + (iy + 0.5) * spacing;
-        const wz = origin[2] + iz * spacing + v * RELIEF;
+        // Beams protrude DOWNWARD from the ceiling slab toward the room (and the
+        // floor-mounted detectors below), as real structural beams do -- so denser
+        // material displaces the terrain down from the layer plane, not up.
+        const wz = origin[2] + iz * spacing - v * RELIEF;
         const p = toThree(wx, wy, wz);
         const k = (ix * ny + iy) * 3;
         positions[k] = p.x; positions[k + 1] = p.y; positions[k + 2] = p.z;
@@ -422,11 +505,44 @@
   $("hud-metrics").textContent = Object.entries(V.headline_metrics || {})
     .map(([k, v]) => `${k}: ${typeof v === "number" ? v.toPrecision(3) : v}`)
     .join("  |  ");
+  // Data-chosen ceiling height from parallax autofocus (muontomo.focus): the
+  // trusted cross-validated height when available, else the fast quick-look.
+  if (V.focus) {
+    const f = V.focus, el = document.getElementById("hud-focus");
+    if (el) {
+      if (f.z_m != null)
+        el.textContent =
+          `auto-focus height: ${f.z_m.toFixed(2)} m (cross-validated)` +
+          (f.quicklook_z_m != null ? `  |  quick-look ${f.quicklook_z_m} m` : "") +
+          (f.solve_z_m != null ? `  |  solved at ${f.solve_z_m} m` : "");
+      else if (f.quicklook_z_m != null)
+        el.textContent =
+          `auto-focus (quick-look): ${f.quicklook_z_m} m` +
+          (f.solve_z_m != null ? `  |  solved at ${f.solve_z_m} m` : "");
+    }
+  }
 
   $("surface").addEventListener("change", (e) => { state.surface = e.target.value; updateSlice(); });
-  if (!dataLayer) $("surface-row").style.display = "none";
   if (!dipLayer) { const o = $("surface-dip-opt"); if (o) o.remove(); }
+  if (!cleanLayer) { const o = $("surface-clean-opt"); if (o) o.remove(); }
+  if (!pos0Layer) { const o = $("surface-pos0-opt"); if (o) o.remove(); }
+  if (!pos1Layer) { const o = $("surface-pos1-opt"); if (o) o.remove(); }
+  if (!dataLayer) { const o = $("surface"); const d = [...o.options].find(x => x.value === "data"); if (d) d.remove(); }
+  // Only the recon surface guaranteed -- hide the whole selector if nothing to compare against.
+  if (!dataLayer && !dipLayer && !cleanLayer && !pos0Layer && !pos1Layer) $("surface-row").style.display = "none";
+  // Full-room voxel volume: swap the active volume that the iso-surfaces and the
+  // z-slice read, so the whole 3D voxel cloud can be inspected as another option.
+  if (!fieldFull) { const r = $("fullvol-row"); if (r) r.style.display = "none"; }
+  $("toggle-fullvol").addEventListener("change", (e) => {
+    const on = e.target.checked && fieldFull;
+    field = on ? fieldFull : fieldLayer;
+    quantScale = on ? V.volume_full_scale : V.quant_scale;
+    rebuild();
+    updateSlice();
+  });
   $("toggle-beams").addEventListener("change", (e) => { beamGroup.visible = e.target.checked; });
+  $("toggle-voxels").addEventListener("change", (e) => { state.showVoxels = e.target.checked; buildVoxels(); });
+  $("voxel-cut").addEventListener("input", (e) => { state.voxelCut = +e.target.value; if (state.showVoxels) buildVoxels(); });
   $("toggle-shaded").addEventListener("change", (e) => { state.shaded = e.target.checked; updateSlice(); });
   if (!V.verified_beams) $("beams-row").style.display = "none";
   $("thresh-lo").addEventListener("input", (e) => { state.threshold = +e.target.value; rebuild(); });
@@ -440,11 +556,38 @@
   $("cam-top").addEventListener("click", () => frameCamera("top"));
   $("cam-front").addEventListener("click", () => frameCamera("front"));
 
+  // Colour palette: swap the active density LUT and re-colour the terrain, colorbar
+  // and voxel cloud (iso-surfaces keep their fixed low/high colours).
+  $("palette").addEventListener("change", (e) => {
+    activeLUT = PALETTES[e.target.value] !== undefined ? PALETTES[e.target.value] : PALETTES.viridis;
+    updateSlice();
+    buildVoxels();
+  });
+
+  // Collapse / expand the whole control panel for an unobstructed view.
+  $("panel-toggle").addEventListener("click", () => {
+    const collapsed = $("panel").classList.toggle("collapsed");
+    $("panel-toggle").innerHTML = collapsed ? "show &#9656;" : "hide &#9662;";
+  });
+
+  // Save the current 3D view as a PNG (preserveDrawingBuffer makes the canvas
+  // readable; render once first so the latest frame is captured).
+  $("save-png").addEventListener("click", () => {
+    renderer.render(scene, camera);
+    const a = document.createElement("a");
+    a.href = renderer.domElement.toDataURL("image/png");
+    a.download = `${V.run || "viewer"}_${state.surface}${state.showVoxels ? "_voxels" : ""}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
   const zslider = $("zslice");
   zslider.max = nz - 1;
   zslider.value = state.zSlice;
   $("thresh-lo").value = state.threshold;
   $("thresh-hi").value = state.threshold2;
+  $("voxel-cut").value = state.voxelCut;
   $("toggle-lo").checked = state.showLow;
   $("toggle-hi").checked = state.showHigh;
 
@@ -452,8 +595,10 @@
   window.__viewerState = () => ({
     threshold: state.threshold, threshold2: state.threshold2, zSlice: state.zSlice,
     triangles: lastTriangles, terrainTriangles: lastTerrainTriangles, cameraPos: camera.position.toArray(),
+    voxelCount: lastVoxelCount, showVoxels: state.showVoxels,
     thinLayer, sliceVisible, surface: state.surface,
-    hasDataLayer: !!dataLayer, hasDipLayer: !!dipLayer,
+    hasDataLayer: !!dataLayer, hasDipLayer: !!dipLayer, hasCleanLayer: !!cleanLayer,
+    hasPos0Layer: !!pos0Layer, hasPos1Layer: !!pos1Layer, hasFullVolume: !!fieldFull,
   });
   window.__setState = (partial) => {
     Object.assign(state, partial);

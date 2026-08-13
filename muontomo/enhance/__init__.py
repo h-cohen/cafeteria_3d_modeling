@@ -18,3 +18,4 @@ from .context import EnhanceContext, load_context  # noqa: F401
 from . import guided  # noqa: F401,E402
 from . import dip  # noqa: F401,E402
 from . import pnp  # noqa: F401,E402
+from . import artifacts  # noqa: F401,E402  (registers "clean")

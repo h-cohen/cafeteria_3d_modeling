@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rolling Status — cafeteria_3d_modeling</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1a1d21; --muted:#5b6472; --line:#e3e7ec;
+    --accent:#2e7d47; --accent2:#8c1d40; --chip:#eef2f6; --shadow:0 1px 3px rgba(20,30,40,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#101418; --panel:#181d23; --ink:#e8eaed; --muted:#9aa4b1; --line:#2a323b;
+      --accent:#5bbf7d; --accent2:#e26d94; --chip:#20272f; --shadow:0 1px 3px rgba(0,0,0,.4);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);
+    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    padding:32px 20px 64px;}
+  .wrap{max-width:880px;margin:0 auto}
+  header h1{font-size:22px;margin:0 0 4px}
+  header p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
+  .tiles{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 28px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 18px;box-shadow:var(--shadow);min-width:120px}
+  .tile .n{font-size:26px;font-weight:700;line-height:1}
+  .tile .l{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.02em}
+  .tile.next .n{color:var(--accent2)}
+  .tile.sess .n{color:var(--accent)}
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:16px 18px;box-shadow:var(--shadow);margin:0 0 28px;overflow-x:auto}
+  .flow h2,.tl h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--muted);margin:0 0 12px}
+  .tl{margin-top:6px}
+  .entry{position:relative;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:16px 18px 14px 20px;box-shadow:var(--shadow);margin:0 0 16px}
+  .entry::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;
+    border-radius:4px;background:var(--accent)}
+  .entry .date{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .entry h3{margin:2px 0 8px;font-size:16px}
+  .kv{margin:6px 0}
+  .kv .k{font-weight:600;color:var(--accent)}
+  .kv.res .k{color:var(--accent2)}
+  ul{margin:6px 0 2px;padding-left:20px}
+  li{margin:2px 0}
+  details{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+  summary{cursor:pointer;color:var(--muted);font-size:13px;user-select:none}
+  details[open] summary{margin-bottom:6px}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12.5px}
+  svg{max-width:100%;height:auto;display:block}
+  .node text{font:600 12px system-ui,sans-serif}
+  .sub{font:11px system-ui;fill:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Rolling Status — cafeteria_3d_modeling</h1>
+    <p>Running log of progress across sessions · regenerated from <code>rolling_status.md</code></p>
+  </header>
+
+  <div class="tiles">
+    <div class="tile sess"><div class="n">2</div><div class="l">SESSIONS LOGGED</div></div>
+    <div class="tile next"><div class="n">4</div><div class="l">OPEN&nbsp;“NEXT”&nbsp;ITEMS</div></div>
+    <div class="tile"><div class="n">1.9&nbsp;M</div><div class="l">ROOM VOXELS</div></div>
+    <div class="tile"><div class="n">6&times;</div><div class="l">BEAM CNR GAIN</div></div>
+  </div>
+
+  <div class="flow">
+    <h2>Project progression</h2>
+    <svg viewBox="0 0 760 74" role="img" aria-label="Session progression: start, autofocus, full-room voxels and paper">
+      <defs>
+        <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L7,3 L0,6 Z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+      <line x1="96" y1="37" x2="150" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="400" y1="37" x2="452" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
+      <g class="node">
+        <circle cx="52" cy="37" r="22" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+        <text x="52" y="41" text-anchor="middle" fill="var(--muted)">start</text>
+      </g>
+      <g class="node">
+        <rect x="160" y="14" width="240" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
+        <text x="280" y="34" text-anchor="middle" fill="var(--ink)">Autofocus + report</text>
+        <text x="280" y="50" text-anchor="middle" class="sub">08-13 am · CV height-scan → 7.0 m</text>
+      </g>
+      <g class="node">
+        <rect x="462" y="14" width="280" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
+        <text x="602" y="34" text-anchor="middle" fill="var(--ink)">Full-room voxels + paper</text>
+        <text x="602" y="50" text-anchor="middle" class="sub">08-13 pm · clean 6× CNR · 6-pg report</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="tl">
+    <h2>Timeline · newest first</h2>
+
+    <article class="entry">
+      <div class="date">2026-08-13 16:51</div>
+      <h3>Full-room voxels, artifact cleanup, paper</h3>
+      <div class="kv"><span class="k">Goal:</span> Clean the artifacts out of the 3D reconstruction, deliver a complete-room voxel model from the two detectors, and write it all up as a paper-style report.</div>
+      <div class="kv res"><span class="k">Result:</span> The viewer shows a clean, artifact-free reconstruction plus an explorable full-room voxel cloud, and the work is documented in a self-contained 6-page paper under <code>reports/</code>. All 43 tests pass. Still nothing committed to git.</div>
+      <details open>
+        <summary>Done &amp; Next</summary>
+        <div class="kv"><span class="k">Done</span></div>
+        <ul>
+          <li>Built the <code>clean</code> enhancer (<code>muontomo/enhance/artifacts.py</code>): support taper kills the boundary-blob ring, guided denoise + floor suppression flattens the background, direction-aware sharpening straightens the beams — beam CNR 0.40 → 2.48 (6×), offset 0.088 m, PASS; wired into the viewer as an "artifact-cleaned" surface.</li>
+          <li>Full-room 3D solve (<code>configs/full3d.json</code> → <code>volume_full3d.npz</code>, 1.9 M voxels) with a viewer toggle, a support taper fixing the "inverted beams" display, and a new voxel-cloud renderer (all-z colored points, density cutoff + z-cut sliders).</li>
+          <li>Viewer UX: collapsible control panel, color-palette dropdown (viridis/inferno/magma/turbo/grayscale), save-PNG button.</li>
+          <li>Wrote <code>reports/voxel_reconstruction_report.{html,pdf}</code> — a 6-page paper: achievement-first framing (full-room model from only two detectors), autofocus section with the two-detector-disagreement and beam-verify figures, a pedagogical "one detector → two" page, quantified depth degeneracy (28% of mass in 6–8 m) and what a 3rd detector / four-corner array would buy (δz ~1 m → 0.4 / 0.2 m).</li>
+        </ul>
+        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
+        <ul>
+          <li>Commit the whole batch (enhance <code>clean</code>, full3d config, viewer features, focus/autofocus, <code>scripts/</code>, <code>reports/</code>) — everything is ready to stage.</li>
+          <li>Optional: make <code>clean</code> the default viewer surface, or apply the artifact cleanup on top of the DIP layer (best positions + artifact removal).</li>
+        </ul>
+      </details>
+    </article>
+
+    <article class="entry">
+      <div class="date">2026-08-13 12:56</div>
+      <h3>Data-driven ceiling autofocus + report</h3>
+      <div class="kv"><span class="k">Goal:</span> Give the pipeline a trustworthy, data-driven ceiling-height “autofocus” and make the 3D viewer and its reporting legible and honest.</div>
+      <div class="kv res"><span class="k">Result:</span> Autofocus independently selects 7.0 m and is validated against known-truth simulations; the report and figures are legible with no duplicated content. All 43 tests pass. Nothing committed to git.</div>
+      <details>
+        <summary>Done &amp; Next</summary>
+        <div class="kv"><span class="k">Done</span></div>
+        <ul>
+          <li>Fixed viewer surface-switch bug (meshes stacking, not replacing), flipped beam relief to hang downward toward the detectors, and added a single-detector (pos0 / pos1) vs. two-detector surface toggle.</li>
+          <li>Built <code>muontomo/focus.py</code>: model-free two-view NCC “quick-look” + per-region height map, and promoted the alias-robust cross-validation height-scan (fit one detector, predict the other) as the authoritative estimate → 7.0 m (matches reconstruction chi²).</li>
+          <li>Validated against synthetic ground truth: campaign-geometry phantoms with ceilings at 6.6/7.0/7.4 m recovered to ~0.2 m; added <code>scripts/autofocus_validation.py</code> + committable <code>reports/autofocus_validation.png</code>.</li>
+          <li>Smoothed the CV curve with a trimmed-residual metric (removes aliasing-outlier spikes, same 7.0 m minimum) on a finer 0.1 m grid.</li>
+          <li>Added a 3-page per-run <code>autofocus_report.pdf</code> (<code>muontomo/focus_report.py</code>) generated every <code>evaluate</code>; wired autofocus into the viewer HUD and evaluate headline.</li>
+        </ul>
+        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
+        <ul>
+          <li><code>evaluate</code> now takes ~4 min due to the 0.1 m CV scan — consider widening the step / narrowing the range if too slow routinely.</li>
+          <li>Stage the autofocus work into git when ready (<code>focus.py</code>, <code>focus_report.py</code>, <code>scripts/</code>, <code>reports/</code>, the <code>layered_fit</code> trim option, viewer/evaluate wiring).</li>
+        </ul>
+      </details>
+    </article>
+
+  </div>
+</div>
+</body>
+</html>

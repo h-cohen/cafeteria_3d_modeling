@@ -40,6 +40,33 @@ def _crop_xy(rho: np.ndarray, spacing: float, origin, box) -> tuple[np.ndarray, 
     return cropped, new_origin
 
 
+def _support_xy_taper(run, origin, spacing, shape, x_margin=0.8, y_edge=1.0, roll=0.7):
+    """xy taper in [0,1] bounding the structure to the verified beams' x-extent
+    (+margin) and the interior y, cosine-rolling to 0 over the grid rim. Applied to
+    the full-3D volume so its bright limited-angle boundary ring is removed and the
+    faint interior beams survive the display normalization. Same shape as the
+    'clean' surface's coverage taper. Returns None if beam positions are unknown."""
+    mfile = run / "metrics.json"
+    if not mfile.exists():
+        return None
+    beams = (json.loads(mfile.read_text()).get("beams") or {}).get("beams_x_data_m")
+    if not beams:
+        return None
+    bx = np.asarray(beams, float)
+    nx, ny = shape[0], shape[1]
+    xs = origin[0] + (np.arange(nx) + 0.5) * spacing
+    ys = origin[1] + (np.arange(ny) + 0.5) * spacing
+
+    def axis(coord, lo, hi):
+        d = np.minimum(coord - lo, hi - coord)
+        w = np.clip(1.0 + d / roll, 0.0, 1.0)
+        return 0.5 - 0.5 * np.cos(np.pi * w)
+
+    wx = axis(xs, float(bx.min()) - x_margin, float(bx.max()) + x_margin)
+    wy = axis(ys, origin[1] + y_edge, origin[1] + ny * spacing - y_edge)
+    return np.outer(wx, wy).astype(np.float32)
+
+
 def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Path:
     run = Path(run_dir)
     export_volume(run)  # writes volume.npy + meta.json (headline metrics, iso hints)
@@ -103,6 +130,40 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
     quant = np.clip(pos * scale, 0, 255).astype(np.uint8)
     data_b64 = base64.b64encode(quant.tobytes()).decode("ascii")
 
+    # Full-room 3D voxel reconstruction (optional): the same data solved over the
+    # WHOLE grid (SIRT+TV) instead of the thin ceiling layer, dropped in as
+    # volume_full3d.npz. Two views make this limited-angle (z-smeared), so it is
+    # offered as a toggle -- swap the volume that drives the iso-surfaces and the
+    # z-slice, to inspect the full voxel cloud rather than just the ceiling plane.
+    # Run through the identical crop -> downsample as the main volume so it shares
+    # the display grid (same nx, ny, nz), then a light isotropic smooth.
+    volume_full_b64 = volume_full_scale = None
+    ff = run / "volume_full3d.npz"
+    if ff.exists():
+        try:
+            with np.load(ff) as vz:
+                rf = np.maximum(vz["rho"].astype(np.float32), 0.0)
+            o2, s2 = tuple(meta["origin_m"]), meta["spacing_m"]
+            if crop is not None:
+                rf, o2 = _crop_xy(rf, s2, o2, crop)
+            rf, s2, o2 = _downsample(rf, s2, o2)
+            rf = gaussian_filter(rf, (sigma_m / s2, sigma_m / s2, 0.6))
+            # strip the limited-angle boundary ring so the display normalization is
+            # set by the interior structure, not the artifacts (see _support_xy_taper)
+            taper = _support_xy_taper(run, o2, s2, rf.shape)
+            if taper is not None:
+                rf = rf * taper[:, :, None]
+            if rf.shape == pos.shape:
+                f99 = float(np.percentile(rf, 99)) if rf.max() > 0 else 1.0
+                volume_full_scale = 255.0 / max(f99 * 1.5, 1e-9)
+                volume_full_b64 = base64.b64encode(
+                    np.clip(rf * volume_full_scale, 0, 255).astype(np.uint8).tobytes()
+                ).decode("ascii")
+            else:
+                print(f"note: full-3D volume shape {rf.shape} != display {pos.shape}; skipped")
+        except Exception as e:
+            print(f"note: no full-3D volume embedded ({e})")
+
     # Model-free "measured data" surface: the mean per-detector backprojection of
     # -ln(T) onto the ceiling plane, sampled on the same xy grid as the volume.
     # This is the closest-to-raw-data view (no solver, no regularization) and is
@@ -124,41 +185,80 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
             np.clip(mean_bp * data_scale, 0, 255).astype(np.uint8).tobytes()
         ).decode("ascii")
 
-    # DIP-enhanced surface: the Deep Image Prior reconstruction of the ceiling
-    # layer (muontomo.enhance), the winner of the enhancement comparison -- best
-    # beam-position accuracy (~0.04 m) and clean sharp beams, gated against the
-    # measured data so it cannot invent structure. Prefer the precomputed
-    # enhance/dip.npy (deterministic, already verified by the CLI); fall back to
-    # computing it here. The enhance layer lives on the full solver grid, so it
-    # is interpolated onto the same display grid as the other surfaces.
-    dip_layer_b64 = None
-    dip_scale = None
-    if tmaps is not None:
+    # Enhanced surfaces (muontomo.enhance), each a 2D ceiling layer on the full
+    # solver grid, interpolated onto the display grid like every other surface and
+    # gated against the measured data so they cannot invent structure:
+    #   dip   -- Deep Image Prior, best beam-position accuracy (~0.04 m).
+    #   clean -- artifact removal + sharpening (coverage taper kills the boundary
+    #            blobs, guided denoise + floor flatten the background, direction-aware
+    #            sharpen tightens the beams). ~6x beam contrast-to-noise vs the raw slice.
+    # Prefer the precomputed enhance/<name>.npy (deterministic, CLI-verified).
+    def _embed_enhance(name, fallback=None):
         try:
-            dfile = run / "enhance" / "dip.npy"
-            if dfile.exists():
-                dip_full = np.load(dfile).astype(np.float64)
+            f = run / "enhance" / f"{name}.npy"
+            if f.exists():
+                full = np.load(f).astype(np.float64)
+            elif fallback is not None:
+                full = np.asarray(fallback(), np.float64)
             else:
-                from ..enhance.context import load_context
-                from ..enhance import dip as _dipmod
-
-                dip_full = np.asarray(_dipmod._DIP().enhance(load_context(run)), np.float64)
-            # interpolate the full-grid layer onto the display xy grid
+                return None, None
             from scipy.interpolate import RegularGridInterpolator
 
             o0, s0 = meta["origin_m"], meta["spacing_m"]
-            xs0 = o0[0] + (np.arange(dip_full.shape[0]) + 0.5) * s0
-            ys0 = o0[1] + (np.arange(dip_full.shape[1]) + 0.5) * s0
-            interp = RegularGridInterpolator((xs0, ys0), dip_full, bounds_error=False, fill_value=0.0)
+            xs0 = o0[0] + (np.arange(full.shape[0]) + 0.5) * s0
+            ys0 = o0[1] + (np.arange(full.shape[1]) + 0.5) * s0
+            interp = RegularGridInterpolator((xs0, ys0), full, bounds_error=False, fill_value=0.0)
             gx, gy = np.meshgrid(xs, ys, indexing="ij")
-            dip_disp = np.maximum(interp((gx, gy)), 0.0)
-            d99 = float(np.percentile(dip_disp[dip_disp > 0], 99)) if (dip_disp > 0).any() else 1.0
-            dip_scale = 255.0 / max(d99 * 1.5, 1e-9)
-            dip_layer_b64 = base64.b64encode(
-                np.clip(dip_disp * dip_scale, 0, 255).astype(np.uint8).tobytes()
+            disp = np.maximum(interp((gx, gy)), 0.0)
+            p99 = float(np.percentile(disp[disp > 0], 99)) if (disp > 0).any() else 1.0
+            sc = 255.0 / max(p99 * 1.5, 1e-9)
+            b64 = base64.b64encode(
+                np.clip(disp * sc, 0, 255).astype(np.uint8).tobytes()
             ).decode("ascii")
-        except Exception as e:  # torch absent, etc. -- surface simply won't appear
-            print(f"note: no DIP-enhanced layer embedded ({e})")
+            return b64, sc
+        except Exception as e:  # torch absent / layer missing -- surface just won't appear
+            print(f"note: no {name}-enhanced layer embedded ({e})")
+            return None, None
+
+    dip_layer_b64 = dip_scale = None
+    clean_layer_b64 = clean_scale = None
+    if tmaps is not None:
+        def _dip_fallback():
+            from ..enhance.context import load_context
+            from ..enhance import dip as _dipmod
+
+            return _dipmod._DIP().enhance(load_context(run))
+
+        dip_layer_b64, dip_scale = _embed_enhance("dip", _dip_fallback)
+        clean_layer_b64, clean_scale = _embed_enhance("clean")
+
+    # Single-detector reconstructions: the same SIRT+TV solve trained on ONE
+    # position only (volume_holdout_pos0/pos1.npz, written by reconstruct.py's
+    # cross-validation pass). Embedded as 2D layers at the fitted ceiling height,
+    # run through the identical crop -> downsample -> display-blur pipeline as the
+    # both-detector volume, so the viewer can toggle between "one detector" and
+    # "two detectors fused" and see directly what the second view buys (the
+    # limited-angle streaking a single detector leaves behind).
+    def _single_detector_layer(vol_path: Path):
+        if not vol_path.exists():
+            return None, None
+        r = np.maximum(np.load(vol_path)["rho"].astype(np.float32), 0.0)
+        o0, s0 = tuple(meta["origin_m"]), meta["spacing_m"]
+        if crop is not None:
+            r, o0 = _crop_xy(r, s0, o0, crop)
+        r, s0, o0 = _downsample(r, s0, o0)
+        r = gaussian_filter(r, sigma=(sigma_m / s0, sigma_m / s0, 0.0))
+        iz = max(0, min(r.shape[2] - 1, int(round((z_layer - o0[2]) / s0))))
+        lyr = r[:, :, iz]
+        v99 = float(np.percentile(lyr[lyr > 0], 99)) if (lyr > 0).any() else 1.0
+        sc = 255.0 / max(v99 * 1.5, 1e-9)
+        b64 = base64.b64encode(
+            np.clip(lyr * sc, 0, 255).astype(np.uint8).tobytes()
+        ).decode("ascii")
+        return b64, sc
+
+    pos0_b64, pos0_scale = _single_detector_layer(run / "volume_holdout_pos0.npz")
+    pos1_b64, pos1_scale = _single_detector_layer(run / "volume_holdout_pos1.npz")
 
     # Verified beam positions (model-free, from muontomo.beams via the run's
     # metrics.json): drawn in the viewer as guide lines over the terrain, so the
@@ -174,6 +274,37 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
                 "y": beams.get("beams_y_data_m", []),
                 "z": z_layer,
             }
+
+    # Model-free autofocus (muontomo.focus): the ceiling height the two-view
+    # parallax itself points to, independent of the solver's assumed layer. Shown
+    # in the HUD next to the solve height so the data-chosen depth is visible at a
+    # glance. Prefer the precomputed focus.json; else run a coarse global scan.
+    # NOTE: this is a measurement, not the display plane -- the volumes were
+    # SOLVED at z_layer, so the terrain still slices there; z* feeds a re-solve.
+    focus_info = None
+    if tmaps is not None:
+        try:
+            ffile = run / "focus.json"
+            if ffile.exists():  # authoritative: cross-validated height from evaluate
+                fj = json.loads(ffile.read_text())
+                focus_info = {
+                    "z_m": fj.get("autofocus_z_m"),  # cross-validated (trusted)
+                    "quicklook_z_m": fj.get("quicklook_z_m"),  # model-free NCC
+                    "map_median_z_m": (fj.get("height_map") or {}).get("median_z_m"),
+                    "map_iqr_z_m": (fj.get("height_map") or {}).get("iqr_z_m"),
+                    "solve_z_m": fj.get("solve_z_m", round(float(z_layer), 2)),
+                }
+            else:  # fast fallback: model-free quick-look only (no CV scan at build time)
+                from ..focus import quick_focus
+
+                fj = quick_focus(tmaps, cfg.geometry, cfg)
+                focus_info = {
+                    "z_m": None,
+                    "quicklook_z_m": fj.get("focus_z_m"),
+                    "solve_z_m": round(float(z_layer), 2),
+                }
+        except Exception as e:  # data absent, etc. -- HUD line simply won't appear
+            print(f"note: no autofocus height embedded ({e})")
 
     # Percentile-based iso levels on the actual (smoothed, cropped) field: p80
     # sits just above the noise floor, p92 isolates the strongest beam ridges.
@@ -198,10 +329,19 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
         "headline_metrics": meta.get("headline_metrics", {}),
         "detectors": meta.get("detectors", []),
         "data_b64": data_b64,
+        "volume_full_b64": volume_full_b64,  # nx*ny*nz uint8 full-room 3D volume, or null
+        "volume_full_scale": volume_full_scale,  # physical density = byte / scale
         "backproject_b64": data_layer_b64,  # nx*ny uint8, or null
         "backproject_scale": data_scale,  # physical opacity = byte / scale
         "dip_b64": dip_layer_b64,  # nx*ny uint8 DIP-enhanced layer, or null
         "dip_scale": dip_scale,  # physical density = byte / scale
+        "clean_b64": clean_layer_b64,  # nx*ny uint8 artifact-cleaned layer, or null
+        "clean_scale": clean_scale,  # physical density = byte / scale
+        "pos0_b64": pos0_b64,  # nx*ny uint8 single-detector (pos0-only) layer, or null
+        "pos0_scale": pos0_scale,  # physical density = byte / scale
+        "pos1_b64": pos1_b64,  # nx*ny uint8 single-detector (pos1-only) layer, or null
+        "pos1_scale": pos1_scale,  # physical density = byte / scale
+        "focus": focus_info,  # {z_m, ncc, map_median_z_m, map_iqr_z_m, solve_z_m} or null
         "verified_beams": verified_beams,  # {x: [..], y: [..], z} or null
     }
 

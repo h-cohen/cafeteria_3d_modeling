@@ -171,6 +171,15 @@ def evaluate_run(run_dir: str | Path, truth_path: str | Path | None = None,
     except Exception as e:
         card["beams"] = {"error": str(e)}
 
+    # Model-free autofocus: the ceiling height two-view parallax points to, and a
+    # per-region height map (muontomo.focus) -- independent of the solved layer.
+    try:
+        from .focus import run_focus
+
+        card["focus"] = run_focus(run)
+    except Exception as e:
+        card["focus"] = {"error": str(e)}
+
     card["headline"] = {
         "chi2": round(fid["chi2_ndof"], 3),
         "cv_pearson": round(cvd.get("cv_pearson", float("nan")), 3),
@@ -181,6 +190,9 @@ def evaluate_run(run_dir: str | Path, truth_path: str | Path | None = None,
     if isinstance(card["beams"], dict) and "parallax_z_x_m" in card["beams"]:
         card["headline"]["parallax_z_m"] = card["beams"]["parallax_z_x_m"]
         card["headline"]["beam_offset_m"] = card["beams"]["mean_abs_beam_offset_m"]
+    if isinstance(card["focus"], dict) and "autofocus_z_m" in card["focus"]:
+        card["headline"]["autofocus_z_m"] = card["focus"]["autofocus_z_m"]
+        card["headline"]["autofocus_quicklook_z_m"] = card["focus"].get("quicklook_z_m")
     if card["truth"]:
         card["headline"]["truth_ssim"] = round(card["truth"]["ssim3d"], 3)
 

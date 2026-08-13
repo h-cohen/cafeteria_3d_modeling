@@ -9,11 +9,17 @@
   #hud-metrics { font-size: 12px; color: #a9b4bd; margin-top: 4px; }
   #hud-colorbar { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 11px; color: #a9b4bd; }
   #colorbar { border-radius: 3px; }
-  #panel { position: fixed; bottom: 10px; left: 10px; background: rgba(20,24,28,0.85); padding: 12px 16px;
-           border-radius: 8px; font-size: 12px; display: grid; gap: 8px; min-width: 260px; }
+  #panel { position: fixed; bottom: 10px; left: 10px; background: rgba(20,24,28,0.85); padding: 10px 14px;
+           border-radius: 8px; font-size: 12px; min-width: 260px; max-height: 92vh; overflow-y: auto; }
+  #panel-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+  #panel-title { font-weight: 600; color: #cfd8e6; }
+  #panel-body { display: grid; gap: 8px; margin-top: 10px; }
+  #panel.collapsed #panel-body { display: none; }
+  #panel.collapsed { min-width: 0; }
   #panel label { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
   #panel input[type="range"] { flex: 1; }
-  .row { display: flex; gap: 6px; }
+  #panel select { background: #2a3138; color: #e8eaed; border: 1px solid #445; border-radius: 4px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
   button { background: #2a3138; color: #e8eaed; border: 1px solid #445; border-radius: 4px; padding: 4px 10px;
            cursor: pointer; font-size: 12px; }
   button:hover { background: #3a4148; }
@@ -22,6 +28,7 @@
 <div id="hud">
   <div id="hud-title"></div>
   <div id="hud-metrics"></div>
+  <div id="hud-focus" style="font-size:12px; color:#8fd19e; margin-top:3px;"></div>
   <div id="hud-colorbar">
     <span id="colorbar-lo"></span>
     <canvas id="colorbar" width="160" height="12"></canvas>
@@ -30,14 +37,25 @@
   </div>
 </div>
 <div id="panel">
+  <div id="panel-head">
+    <span id="panel-title">controls</span>
+    <button id="panel-toggle" title="collapse / expand panel">hide &#9662;</button>
+  </div>
+  <div id="panel-body">
   <label id="surface-row">surface
     <select id="surface">
-      <option value="recon">3D reconstruction</option>
+      <option value="recon">3D reconstruction (both detectors)</option>
       <option value="dip" id="surface-dip-opt">reconstruction (DIP enhanced)</option>
+      <option value="clean" id="surface-clean-opt">reconstruction (artifact-cleaned)</option>
+      <option value="pos0" id="surface-pos0-opt">single detector: pos0 only</option>
+      <option value="pos1" id="surface-pos1-opt">single detector: pos1 only</option>
       <option value="data">measured data (backprojection)</option>
     </select>
   </label>
+  <label id="fullvol-row"><input id="toggle-fullvol" type="checkbox"> full-room voxels (3D volume)</label>
   <label id="beams-row"><input id="toggle-beams" type="checkbox" checked> verified beam guides (from data)</label>
+  <label><input id="toggle-voxels" type="checkbox"> show voxel cloud (all z)</label>
+  <label>voxel density cutoff <input id="voxel-cut" type="range" min="0.02" max="0.9" step="0.005"></label>
   <label><input id="toggle-shaded" type="checkbox"> shaded relief (3D lighting)</label>
   <label>low iso <input id="thresh-lo" type="range" min="0.01" max="0.98" step="0.005"></label>
   <label><input id="toggle-lo" type="checkbox"> show low-iso surface</label>
@@ -46,10 +64,21 @@
   <label>z-slice <input id="zslice" type="range" min="0" max="1" step="1"></label>
   <label><input id="toggle-slice" type="checkbox" checked> show z-slice</label>
   <label><input id="toggle-clip" type="checkbox"> clip volume below slice</label>
+  <label>colour palette
+    <select id="palette">
+      <option value="viridis">viridis</option>
+      <option value="inferno">inferno</option>
+      <option value="magma">magma</option>
+      <option value="turbo">turbo</option>
+      <option value="grayscale">grayscale</option>
+    </select>
+  </label>
   <div class="row">
     <button id="cam-iso">iso view</button>
     <button id="cam-top">top</button>
     <button id="cam-front">front</button>
+    <button id="save-png">save PNG</button>
+  </div>
   </div>
 </div>
 <script>/*__THREE_JS__*/</script>

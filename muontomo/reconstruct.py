@@ -232,6 +232,7 @@ def layered_fit(
     geom,
     omaps,
     cache_dir=None,
+    cv_trim_pct: float | None = None,
 ) -> tuple[np.ndarray, dict]:
     """Height-scan layered reconstruction.
 
@@ -241,6 +242,14 @@ def layered_fit(
     (periodic ceiling patterns alias at discrete heights; CV + finite extent +
     angle-dependent focus break the tie). The best layer is embedded into the
     full 3D grid of `fwd` so downstream code sees an ordinary volume.
+
+    cv_trim_pct: if set (e.g. 90), the CV residual per view drops the worst
+    (100 - cv_trim_pct)% of bins before averaging. The plain mean-squared residual
+    is dominated, at certain aliased heights, by a handful of pathological bins
+    where the mis-registered beams land on gaps -- producing sharp spikes in the
+    height curve. Trimming those outlier bins yields a smooth curve with the SAME
+    minimum, and a height estimate that does not hinge on a few bins. Default None
+    keeps the exact mean behaviour (unchanged for the reconstruction).
     """
     rc2 = ReconstructionConfig(**{**vars(rc), "algorithm": "tv", "tv_z_weight": 0.0})
     active = data.w > 0  # inherit any holdout/mask restriction (row layout is shared)
@@ -266,8 +275,14 @@ def layered_fit(
                 sw = w.sum()
                 if sw > 0:
                     resid = resid - (w * resid).sum() / sw  # free offset on the held-out view
-                n = max(np.count_nonzero(w), 1)
-                score = float(np.sum(w * resid**2) / n)
+                r2 = w * resid**2
+                if cv_trim_pct is not None:
+                    pos = r2[r2 > 0]
+                    thr = np.percentile(pos, cv_trim_pct) if pos.size else np.inf
+                    kept = r2 <= thr
+                    score = float(r2[kept].sum() / max(np.count_nonzero(kept), 1))
+                else:
+                    score = float(np.sum(r2) / max(np.count_nonzero(w), 1))
                 entry["cv"][f"{train}->{test}"] = score
                 cv_scores.append(score)
         entry["cv_mean"] = float(np.mean(cv_scores))
