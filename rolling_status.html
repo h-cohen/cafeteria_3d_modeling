@@ -20,19 +20,19 @@
   body{background:var(--bg);color:var(--ink);
     font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     padding:32px 20px 64px;}
-  .wrap{max-width:880px;margin:0 auto}
+  .wrap{max-width:900px;margin:0 auto}
   header h1{font-size:22px;margin:0 0 4px}
   header p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
   .tiles{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 28px}
   .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:14px 18px;box-shadow:var(--shadow);min-width:120px}
+    padding:14px 18px;box-shadow:var(--shadow);min-width:118px}
   .tile .n{font-size:26px;font-weight:700;line-height:1}
   .tile .l{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.02em}
   .tile.next .n{color:var(--accent2)}
   .tile.sess .n{color:var(--accent)}
-  .flow{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  .flow,.chart{background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:16px 18px;box-shadow:var(--shadow);margin:0 0 28px;overflow-x:auto}
-  .flow h2,.tl h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
+  .flow h2,.tl h2,.chart h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
     color:var(--muted);margin:0 0 12px}
   .tl{margin-top:6px}
   .entry{position:relative;background:var(--panel);border:1px solid var(--line);
@@ -53,6 +53,7 @@
   svg{max-width:100%;height:auto;display:block}
   .node text{font:600 12px system-ui,sans-serif}
   .sub{font:11px system-ui;fill:var(--muted)}
+  .axis{font:11px system-ui;fill:var(--muted)}
 </style>
 </head>
 <body>
@@ -63,36 +64,60 @@
   </header>
 
   <div class="tiles">
-    <div class="tile sess"><div class="n">2</div><div class="l">SESSIONS LOGGED</div></div>
-    <div class="tile next"><div class="n">4</div><div class="l">OPEN&nbsp;“NEXT”&nbsp;ITEMS</div></div>
-    <div class="tile"><div class="n">1.9&nbsp;M</div><div class="l">ROOM VOXELS</div></div>
-    <div class="tile"><div class="n">6&times;</div><div class="l">BEAM CNR GAIN</div></div>
+    <div class="tile sess"><div class="n">3</div><div class="l">SESSIONS LOGGED</div></div>
+    <div class="tile next"><div class="n">2</div><div class="l">OPEN&nbsp;“NEXT”&nbsp;ITEMS</div></div>
+    <div class="tile"><div class="n">59</div><div class="l">TESTS (CI GREEN)</div></div>
+    <div class="tile"><div class="n">&plusmn;0.12&thinsp;m</div><div class="l">AUTOFOCUS 68% CI</div></div>
   </div>
 
   <div class="flow">
     <h2>Project progression</h2>
-    <svg viewBox="0 0 760 74" role="img" aria-label="Session progression: start, autofocus, full-room voxels and paper">
+    <svg viewBox="0 0 940 74" role="img" aria-label="Session progression">
       <defs>
         <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
           <path d="M0,0 L7,3 L0,6 Z" fill="var(--muted)"/>
         </marker>
       </defs>
-      <line x1="96" y1="37" x2="150" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
-      <line x1="400" y1="37" x2="452" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="92" y1="37" x2="122" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="356" y1="37" x2="386" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
+      <line x1="636" y1="37" x2="666" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
       <g class="node">
-        <circle cx="52" cy="37" r="22" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
-        <text x="52" y="41" text-anchor="middle" fill="var(--muted)">start</text>
+        <circle cx="50" cy="37" r="22" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
+        <text x="50" y="41" text-anchor="middle" fill="var(--muted)">start</text>
       </g>
       <g class="node">
-        <rect x="160" y="14" width="240" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
-        <text x="280" y="34" text-anchor="middle" fill="var(--ink)">Autofocus + report</text>
-        <text x="280" y="50" text-anchor="middle" class="sub">08-13 am · CV height-scan → 7.0 m</text>
+        <rect x="130" y="14" width="226" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
+        <text x="243" y="34" text-anchor="middle" fill="var(--ink)">Autofocus + report</text>
+        <text x="243" y="50" text-anchor="middle" class="sub">08-13 am · CV height-scan → 7.0 m</text>
       </g>
       <g class="node">
-        <rect x="462" y="14" width="280" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
-        <text x="602" y="34" text-anchor="middle" fill="var(--ink)">Full-room voxels + paper</text>
-        <text x="602" y="50" text-anchor="middle" class="sub">08-13 pm · clean 6× CNR · 6-pg report</text>
+        <rect x="394" y="14" width="242" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
+        <text x="515" y="34" text-anchor="middle" fill="var(--ink)">Full-room voxels + paper</text>
+        <text x="515" y="50" text-anchor="middle" class="sub">08-13 pm · clean 6× CNR · 6-pg report</text>
       </g>
+      <g class="node">
+        <rect x="674" y="14" width="252" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
+        <text x="800" y="34" text-anchor="middle" fill="var(--ink)">Hardening + error bars</text>
+        <text x="800" y="50" text-anchor="middle" class="sub">08-24 · 4× faster · z* ±0.12 m · MCS bound</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="chart">
+    <h2>Test-suite growth per session</h2>
+    <svg viewBox="0 0 560 130" role="img" aria-label="Tests per session: 43, 57, 59">
+      <line x1="60" y1="100" x2="540" y2="100" stroke="var(--line)" stroke-width="1"/>
+      <g>
+        <rect x="90"  y="41.7" width="90" height="58.3" rx="3" fill="var(--accent)" opacity="0.55"/>
+        <rect x="240" y="22.7" width="90" height="77.3" rx="3" fill="var(--accent)" opacity="0.75"/>
+        <rect x="390" y="20"   width="90" height="80"   rx="3" fill="var(--accent)"/>
+      </g>
+      <text x="135" y="34" text-anchor="middle" class="axis">43</text>
+      <text x="285" y="15" text-anchor="middle" class="axis">57</text>
+      <text x="435" y="13" text-anchor="middle" class="axis">59</text>
+      <text x="135" y="116" text-anchor="middle" class="axis">08-13 am</text>
+      <text x="285" y="116" text-anchor="middle" class="axis">08-13 pm → 08-24</text>
+      <text x="435" y="116" text-anchor="middle" class="axis">08-24</text>
     </svg>
   </div>
 
@@ -100,23 +125,46 @@
     <h2>Timeline · newest first</h2>
 
     <article class="entry">
+      <div class="date">2026-08-24 19:09</div>
+      <h3>Hardening, error bars, MCS systematics</h3>
+      <div class="kv"><span class="k">Goal:</span> Roadmap steps 4+5 (paper hardening + engineering wins), then steps 2+3 (bootstrap error bars + physics-model honesty check), with a full pipeline re-run in between.</div>
+      <div class="kv res"><span class="k">Result:</span> Pipeline is fast, error-barred, and systematics-bounded; the 6-page paper now carries statistical and physics uncertainties. 59/59 tests, CI green. UQ/MCS batch not yet committed.</div>
+      <details open>
+        <summary>Done &amp; Next</summary>
+        <div class="kv"><span class="k">Done</span></div>
+        <ul>
+          <li>Autofocus 4× faster (<code>layer_cv_score</code> extraction + two-stage coarse→fine CV scan): <code>evaluate</code> ~4 min → ~60 s, same 7.0 m; added <code>dipclean</code> enhancer (DIP + artifact removal) — best surface: offset 0.04 m, CNR 4.1 — wired into CLI + viewer.</li>
+          <li>14 new tests (→57), GitHub Actions CI (torch-free, green on first run), README rewritten; paper hardened: 10 real references, Apparatus placeholder, formal validation table, dipclean result. Committed <code>cad0732</code> + pushed.</li>
+          <li>Re-ran the entire pipeline end-to-end (~5 min): all numbers reproduced exactly (chi² 2.086, autofocus 7.0 m, offset 0.10 m); all five enhancers PASS.</li>
+          <li>Built <code>muontomo/uncertainty.py</code> (parametric Poisson bootstrap), 50+25 replicas on production: beam positions ±0.02–0.12 m (mean 0.055), amplitudes ~50% r.m.s., autofocus z* = 6.86 ± 0.12 m (68% CI); the 0.10 m beam offset is therefore partly systematic.</li>
+          <li>Added <code>scripts/mcs_systematics.py</code> (Highland MCS bound): flux-weighted blur σ ≈ 0.08 m at the ceiling, 3.5× below the 0.28 m bin footprint → ≲6% widening/amplitude bias, positions unbiased. UQ + MCS folded into the paper (abstract ±0.12 m stat; Sec 6 items v/vi) and README; 2 new tests (→59).</li>
+        </ul>
+        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
+        <ul>
+          <li>Commit + push the UQ/MCS batch (<code>uncertainty.py</code>, <code>mcs_systematics.py</code>, tests, README, paper) — excluding the user's local <code>rolling_status.zip</code>.</li>
+          <li>Roadmap step 1 remains: the detector-placement design study (simulate 3rd viewpoint / displaced repeat runs).</li>
+        </ul>
+      </details>
+    </article>
+
+    <article class="entry">
       <div class="date">2026-08-13 16:51</div>
       <h3>Full-room voxels, artifact cleanup, paper</h3>
       <div class="kv"><span class="k">Goal:</span> Clean the artifacts out of the 3D reconstruction, deliver a complete-room voxel model from the two detectors, and write it all up as a paper-style report.</div>
       <div class="kv res"><span class="k">Result:</span> The viewer shows a clean, artifact-free reconstruction plus an explorable full-room voxel cloud, and the work is documented in a self-contained 6-page paper under <code>reports/</code>. All 43 tests pass. Still nothing committed to git.</div>
-      <details open>
+      <details>
         <summary>Done &amp; Next</summary>
         <div class="kv"><span class="k">Done</span></div>
         <ul>
           <li>Built the <code>clean</code> enhancer (<code>muontomo/enhance/artifacts.py</code>): support taper kills the boundary-blob ring, guided denoise + floor suppression flattens the background, direction-aware sharpening straightens the beams — beam CNR 0.40 → 2.48 (6×), offset 0.088 m, PASS; wired into the viewer as an "artifact-cleaned" surface.</li>
           <li>Full-room 3D solve (<code>configs/full3d.json</code> → <code>volume_full3d.npz</code>, 1.9 M voxels) with a viewer toggle, a support taper fixing the "inverted beams" display, and a new voxel-cloud renderer (all-z colored points, density cutoff + z-cut sliders).</li>
-          <li>Viewer UX: collapsible control panel, color-palette dropdown (viridis/inferno/magma/turbo/grayscale), save-PNG button.</li>
-          <li>Wrote <code>reports/voxel_reconstruction_report.{html,pdf}</code> — a 6-page paper: achievement-first framing (full-room model from only two detectors), autofocus section with the two-detector-disagreement and beam-verify figures, a pedagogical "one detector → two" page, quantified depth degeneracy (28% of mass in 6–8 m) and what a 3rd detector / four-corner array would buy (δz ~1 m → 0.4 / 0.2 m).</li>
+          <li>Viewer UX: collapsible control panel, color-palette dropdown, save-PNG button.</li>
+          <li>Wrote <code>reports/voxel_reconstruction_report.{html,pdf}</code> — a 6-page paper: achievement-first framing, autofocus section, a pedagogical "one detector → two" page, quantified depth degeneracy and the return of a 3rd detector / four-corner array.</li>
         </ul>
         <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
         <ul>
-          <li>Commit the whole batch (enhance <code>clean</code>, full3d config, viewer features, focus/autofocus, <code>scripts/</code>, <code>reports/</code>) — everything is ready to stage.</li>
-          <li>Optional: make <code>clean</code> the default viewer surface, or apply the artifact cleanup on top of the DIP layer (best positions + artifact removal).</li>
+          <li>Commit the whole batch — done in the following session (<code>23a8186</code>).</li>
+          <li>Optional: make <code>clean</code> the default viewer surface, or apply the cleanup on the DIP layer — done as <code>dipclean</code>.</li>
         </ul>
       </details>
     </article>
@@ -130,16 +178,15 @@
         <summary>Done &amp; Next</summary>
         <div class="kv"><span class="k">Done</span></div>
         <ul>
-          <li>Fixed viewer surface-switch bug (meshes stacking, not replacing), flipped beam relief to hang downward toward the detectors, and added a single-detector (pos0 / pos1) vs. two-detector surface toggle.</li>
-          <li>Built <code>muontomo/focus.py</code>: model-free two-view NCC “quick-look” + per-region height map, and promoted the alias-robust cross-validation height-scan (fit one detector, predict the other) as the authoritative estimate → 7.0 m (matches reconstruction chi²).</li>
-          <li>Validated against synthetic ground truth: campaign-geometry phantoms with ceilings at 6.6/7.0/7.4 m recovered to ~0.2 m; added <code>scripts/autofocus_validation.py</code> + committable <code>reports/autofocus_validation.png</code>.</li>
-          <li>Smoothed the CV curve with a trimmed-residual metric (removes aliasing-outlier spikes, same 7.0 m minimum) on a finer 0.1 m grid.</li>
-          <li>Added a 3-page per-run <code>autofocus_report.pdf</code> (<code>muontomo/focus_report.py</code>) generated every <code>evaluate</code>; wired autofocus into the viewer HUD and evaluate headline.</li>
+          <li>Fixed viewer surface-switch bug, flipped beam relief downward, added single-detector vs two-detector surface toggle.</li>
+          <li>Built <code>muontomo/focus.py</code>: NCC quick-look + height map, and the alias-robust cross-validation height-scan as the authoritative estimate → 7.0 m.</li>
+          <li>Validated on campaign-geometry phantoms (6.6/7.0/7.4 m recovered to ~0.2 m); added <code>scripts/autofocus_validation.py</code> + committable figure.</li>
+          <li>Smoothed the CV curve with a trimmed-residual metric on a finer grid; added the 3-page per-run <code>autofocus_report.pdf</code>; wired autofocus into HUD + headline.</li>
         </ul>
         <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
         <ul>
-          <li><code>evaluate</code> now takes ~4 min due to the 0.1 m CV scan — consider widening the step / narrowing the range if too slow routinely.</li>
-          <li>Stage the autofocus work into git when ready (<code>focus.py</code>, <code>focus_report.py</code>, <code>scripts/</code>, <code>reports/</code>, the <code>layered_fit</code> trim option, viewer/evaluate wiring).</li>
+          <li><code>evaluate</code> ~4 min due to the CV scan — resolved in the 08-24 session (two-stage scan, ~60 s).</li>
+          <li>Stage the autofocus work into git — done (<code>23a8186</code>).</li>
         </ul>
       </details>
     </article>

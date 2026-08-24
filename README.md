@@ -59,6 +59,7 @@ muontomo.focus                   # ceiling-height autofocus: CV height-scan + qu
 muontomo.backproject             # model-free backprojection of -ln(T) onto the ceiling plane
 muontomo.beams                   # model-free beam verification (parallax triangulation + positions)
 muontomo.enhance                 # enhancement suite: guided | dip | pnp | clean | dipclean
+muontomo.uncertainty             # bootstrap error bars: layer sigma-map, beam pos/amp errors, z* CI
 muontomo.compare                 # IMPROVED/REGRESSED verdict between two runs
 muontomo.phantom                 # synthetic ground truth for rigorous algorithm gating
 muontomo.viewer.build            # self-contained viewer.html
@@ -122,6 +123,20 @@ measures it from the data by a plane-sweep autofocus:
 
 Every `evaluate` regenerates `runs/<run>/autofocus_report.pdf` — a 3-page
 plain-language report of the method, this run's numbers, and the validation.
+
+## Uncertainties and systematics
+
+`python -m muontomo.uncertainty --run <run>` propagates the Poisson counting
+statistics by parametric bootstrap (resample the raw counts, rerun the layered
+solve and the autofocus): per-pixel sigma map of the layer, error bars on each
+beam's position and amplitude, and a confidence interval on the autofocused
+height (`uncertainty.json` + `images/uncertainty.png`).
+
+`python scripts/mcs_systematics.py` bounds the main unmodelled physics —
+multiple Coulomb scattering in the concrete beams (Highland formula,
+flux-weighted): blur sigma ≈ 0.08 m at the ceiling, 3.5× below the 0.28 m
+angular-bin footprint → ≈6% beam widening / amplitude suppression, beam
+positions unbiased (`reports/mcs_systematics.json`).
 
 Note the alias hazard for periodic ceilings: false height solutions repeat
 every `pitch × z / baseline` (~5.8 m here — safely out of range, but check it

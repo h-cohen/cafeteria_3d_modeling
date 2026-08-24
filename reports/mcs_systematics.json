@@ -1,0 +1,40 @@
+{
+  "geometry": {
+    "lever_m": 7.0,
+    "bin_width_tan": 0.04,
+    "bin_footprint_m": 0.28,
+    "beam_fwhm_measured_m": 0.526,
+    "beam_depth_m": 0.3,
+    "L_over_X0": 2.6
+  },
+  "theta0_mrad": {
+    "1GeV": 22.84,
+    "3GeV": 7.58,
+    "10GeV": 2.27
+  },
+  "blur_at_ceiling_m": {
+    "1GeV": 0.16,
+    "3GeV": 0.053,
+    "10GeV": 0.016
+  },
+  "flux_weighted": {
+    "pmin_0.3GeV": {
+      "theta0_mrad": 13.68,
+      "blur_sigma_m": 0.096,
+      "fwhm_widening_frac": 0.088,
+      "amplitude_suppression_frac": 0.081
+    },
+    "pmin_0.5GeV": {
+      "theta0_mrad": 11.32,
+      "blur_sigma_m": 0.079,
+      "fwhm_widening_frac": 0.061,
+      "amplitude_suppression_frac": 0.058
+    },
+    "pmin_1.0GeV": {
+      "theta0_mrad": 8.37,
+      "blur_sigma_m": 0.059,
+      "fwhm_widening_frac": 0.034,
+      "amplitude_suppression_frac": 0.033
+    }
+  }
+}

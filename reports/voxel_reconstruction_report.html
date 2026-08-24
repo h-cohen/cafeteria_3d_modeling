@@ -56,7 +56,7 @@ all five parallel beams plus the transverse beam appear at positions verified mo
 raw data (mean offset 0.10&thinsp;m), with a beam-to-gap contrast of &asymp;&thinsp;5 at the true height,
 and 92% of the room volume is correctly rendered as empty air. The structure&rsquo;s height is itself
 measured from the data by a plane-sweep &ldquo;autofocus&rdquo; (cross-validation height-scan:
-7.0&thinsp;m, validated on synthetic ground truth to &sim;0.2&thinsp;m). The remaining uncertainty is
+7.0&thinsp;m &plusmn;&thinsp;0.12&thinsp;m (stat.), validated on synthetic ground truth to &sim;0.2&thinsp;m). The remaining uncertainty is
 confined to a single axis: one short baseline limits depth localisation to
 &delta;z&thinsp;&asymp;&thinsp;z&sup2;&sigma;<sub>&theta;</sub>/b of order a metre, so the unconstrained
 volume spreads opacity vertically (28% of interior mass within 6&ndash;8&thinsp;m); a thin layered
@@ -325,6 +325,23 @@ be masked or tapered before interpretation.</p>
 <p><b>(iv) No redundancy.</b> With two views there is no third to arbitrate: cross-position
 validation is the <i>only</i> internal consistency check, and a single detector alone is entirely
 height-blind, so pose or calibration errors project into the volume unexposed.</p>
+<p><b>(v) Statistical precision.</b> A parametric bootstrap propagates the Poisson counting
+statistics through the identical pipeline (50 layer + 25 autofocus replicas;
+<code>muontomo.uncertainty</code>). Individual beam positions carry 0.02&ndash;0.12&thinsp;m
+statistical error (mean 0.055&thinsp;m), so the observed 0.10&thinsp;m mean offset from the verified
+positions is not purely statistical &mdash; a comparable systematic component remains (single-plane
+approximation, residual pose error). Per-beam amplitudes fluctuate by &sim;50% r.m.s., individually
+poorly constrained. The autofocused height is reproducible to &plusmn;0.12&thinsp;m
+(68% CI 6.79&ndash;6.97&thinsp;m about a bootstrap mean of 6.86&thinsp;m &mdash; the nominal 7.0&thinsp;m
+minus the validated beam-centroid bias of Sec.&thinsp;3.4).</p>
+<p><b>(vi) Unmodelled scattering.</b> The forward model is absorption-only, but every muon crossing a
+beam is also deflected by multiple Coulomb scattering (Highland
+&theta;<sub>0</sub>&thinsp;&asymp;&thinsp;7.6&thinsp;mrad at 3&thinsp;GeV for
+L/X<sub>0</sub>&thinsp;&asymp;&thinsp;2.6; flux-weighted &asymp;&thinsp;11&thinsp;mrad). At the 7&thinsp;m
+lever this blurs the ceiling image by &sigma;&thinsp;&asymp;&thinsp;0.08&thinsp;m &mdash; 3.5&times;
+below the 0.28&thinsp;m angular-bin footprint &mdash; widening the beams and suppressing their peak
+amplitude by &#8818;&thinsp;6% while leaving positions unbiased by symmetry
+(<code>scripts/mcs_systematics.py</code>).</p>
 <p><b>The contribution of additional detectors.</b> All four uncertainties are geometric, so they
 respond to viewpoints, not exposure &mdash; doubling the statistics with two views sharpens the
 lateral picture but recovers no depth. The scaling &delta;z&thinsp;&asymp;&thinsp;z&sup2;&sigma;<sub>&theta;</sub>/b
@@ -364,7 +381,8 @@ shadows is the strongest argument for the method &mdash; and for the third detec
 </p>
 <div class="footer">
 Artifacts: <code>runs/production/{volume_full3d.npz, volume.npz, viewer.html,
-autofocus_report.pdf}</code>, <code>reports/autofocus_validation.png</code>. Reproduce:
+autofocus_report.pdf}</code>, <code>reports/autofocus_validation.png</code>,
+<code>runs/production/uncertainty.json</code>, <code>reports/mcs_systematics.json</code>. Reproduce:
 <code>python -m muontomo.reconstruct --config configs/full3d.json</code>; autofocus validation:
 <code>python scripts/autofocus_validation.py</code>.
 </div>
