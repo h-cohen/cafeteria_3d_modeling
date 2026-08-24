@@ -29,11 +29,12 @@ def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--run", required=True)
     ap.add_argument("--method", default="all",
-                    choices=["guided", "dip", "pnp", "clean", "all"])
+                    choices=["guided", "dip", "pnp", "clean", "dipclean", "all"])
     args = ap.parse_args(argv)
 
     ctx = load_context(args.run)
-    methods = ["guided", "dip", "pnp", "clean"] if args.method == "all" else [args.method]
+    methods = (["guided", "dip", "pnp", "clean", "dipclean"]
+               if args.method == "all" else [args.method])
     out_dir = ctx.run / "enhance"
     out_dir.mkdir(parents=True, exist_ok=True)
     img_dir = ctx.run / "images"

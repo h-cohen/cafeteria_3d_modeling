@@ -71,6 +71,23 @@ def coverage_mask(ctx: EnhanceContext) -> np.ndarray:
     return np.clip(np.outer(wx, wy), 0.0, 1.0)
 
 
+def _floor_subtract(ctx: EnhanceContext, img: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """Subtract the inter-beam pedestal: estimated in the central band, away from
+    the verified beams and away from the masked rim."""
+    from .verify import data_beam_positions
+
+    beams = data_beam_positions(ctx)
+    band = (ctx.ys > -3.0) & (ctx.ys < 3.0)
+    far = np.ones(ctx.xs.size, bool)
+    for b in beams:
+        far &= np.abs(ctx.xs - b) > 0.4
+    region = img[np.ix_(far, band)]
+    rmask = mask[np.ix_(far, band)]
+    vals = region[(rmask > 0.5) & (region > 0)]
+    floor = FLOOR_FRAC * float(np.percentile(vals, FLOOR_PCT)) if vals.size else 0.0
+    return np.maximum(img - floor, 0.0)
+
+
 def _denoise_and_floor(ctx: EnhanceContext, img: np.ndarray, mask: np.ndarray) -> np.ndarray:
     """Guided edge-preserving denoise, then subtract the inter-beam pedestal."""
     # Mean backprojection as the guide (not the single sharpest detector): the Stage-1
@@ -82,21 +99,7 @@ def _denoise_and_floor(ctx: EnhanceContext, img: np.ndarray, mask: np.ndarray) -
     eps = (GUIDE_EPS_FRAC * float(np.std(nz))) ** 2 if nz.size else 1e-6
     radius_px = max(1, int(round(GUIDE_RADIUS_M / ctx.spacing)))
     den = np.maximum(guided_filter(img, g, radius_px, eps), 0.0)
-
-    # inter-beam floor: median of the denoised map in the central band, away from
-    # the verified beams and away from the masked rim.
-    from .verify import data_beam_positions
-
-    beams = data_beam_positions(ctx)
-    band = (ctx.ys > -3.0) & (ctx.ys < 3.0)
-    far = np.ones(ctx.xs.size, bool)
-    for b in beams:
-        far &= np.abs(ctx.xs - b) > 0.4
-    region = den[np.ix_(far, band)]
-    rmask = mask[np.ix_(far, band)]
-    vals = region[(rmask > 0.5) & (region > 0)]
-    floor = FLOOR_FRAC * float(np.percentile(vals, FLOOR_PCT)) if vals.size else 0.0
-    return np.maximum(den - floor, 0.0)
+    return _floor_subtract(ctx, den, mask)
 
 
 def directional_sharpen(ctx: EnhanceContext, img: np.ndarray) -> np.ndarray:
@@ -159,4 +162,43 @@ class _Clean:
         return x
 
 
+class _DipClean:
+    """Artifact cleanup applied on top of the Deep Image Prior layer: DIP has the
+    best beam-position accuracy (~0.04 m) and is already data-consistently
+    denoised and sharp, so this combo only removes what DIP cannot -- the
+    limited-angle boundary blobs (Stage-1 support taper) and the residual
+    inter-beam pedestal (floor subtraction). No guided re-denoise and no
+    re-sharpening: those would only perturb DIP's verified beam positions.
+    Needs torch (via the dip module) unless a precomputed enhance/dip.npy exists.
+    """
+
+    name = "dipclean"
+
+    def _dip_layer(self, ctx: EnhanceContext) -> np.ndarray:
+        f = ctx.run / "enhance" / "dip.npy"
+        if f.exists():  # deterministic, already gate-verified by the CLI
+            return np.load(f).astype(np.float64)
+        from . import dip as _dip
+
+        return np.asarray(_dip._DIP().enhance(ctx), np.float64)
+
+    def enhance(self, ctx: EnhanceContext) -> np.ndarray:
+        base = self._dip_layer(ctx)
+        cnr0, fn0 = _cnr(ctx, base)
+
+        mask = coverage_mask(ctx)          # Stage 1: kill the boundary ring
+        x = base * mask
+        x = _floor_subtract(ctx, x, mask)  # Stage 2: flatten the inter-beam pedestal
+        x = np.maximum(x * mask, 0.0)
+
+        cnr1, fn1 = _cnr(ctx, x)
+        self.last_info = {
+            "cnr_before": round(cnr0, 3), "cnr_after": round(cnr1, 3),
+            "flat_noise_before": round(fn0, 4), "flat_noise_after": round(fn1, 4),
+            "coverage_kept_frac": round(float((mask > 0.5).mean()), 3),
+        }
+        return x
+
+
 register(_Clean())
+register(_DipClean())

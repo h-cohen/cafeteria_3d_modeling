@@ -225,6 +225,62 @@ def _layer_model(geom, txedges, tyedges, z_center: float, thickness: float, cach
     return build_forward_model(g, txedges, tyedges, grid=grid, cache_dir=cache_dir)
 
 
+def layer_cv_score(
+    geom,
+    txedges: np.ndarray,
+    tyedges: np.ndarray,
+    omaps: dict,
+    rc2: ReconstructionConfig,
+    z: float,
+    thickness: float,
+    cache_dir=None,
+    cv_trim_pct: float | None = None,
+    active: np.ndarray | None = None,
+) -> tuple[float, dict]:
+    """Cross-position validation score of a thin layer at height z.
+
+    Fit the layer to each pose ALONE and score how well it predicts every other
+    pose (free offset on the held-out view). Returns (cv_mean, per-pair dict).
+    Shared by layered_fit's height selection and the autofocus scan
+    (muontomo.focus) -- the scan calls this directly, skipping the full
+    both-pose fit it does not need (1 of 3 solves per height).
+
+    cv_trim_pct: if set (e.g. 90), each view's residual drops its worst
+    (100 - cv_trim_pct)% of bins before averaging -- robust to the
+    aliasing-induced outlier bins that spike the curve at isolated heights.
+    """
+    lf = _layer_model(geom, txedges, tyedges, float(z), thickness, cache_dir)
+    ldata = fit_data(lf, omaps)
+    if active is not None:
+        ldata = ldata.restricted(active)
+    cv: dict = {}
+    scores = []
+    for train in lf.pose_ids:
+        keep = np.zeros(lf.A.shape[0], dtype=bool)
+        keep[lf.rows(train)] = True
+        x_tr, _ = sirt_tv(lf, ldata.restricted(keep), rc2)
+        for test in lf.pose_ids:
+            if test == train:
+                continue
+            rows = lf.rows(test)
+            w = ldata.w[rows]
+            resid = ldata.lam[rows] - (lf.A @ x_tr)[rows]
+            sw = w.sum()
+            if sw > 0:
+                resid = resid - (w * resid).sum() / sw  # free offset on the held-out view
+            r2 = w * resid**2
+            if cv_trim_pct is not None:
+                pos = r2[r2 > 0]
+                thr = np.percentile(pos, cv_trim_pct) if pos.size else np.inf
+                kept = r2 <= thr
+                score = float(r2[kept].sum() / max(np.count_nonzero(kept), 1))
+            else:
+                score = float(np.sum(r2) / max(np.count_nonzero(w), 1))
+            cv[f"{train}->{test}"] = score
+            scores.append(score)
+    return float(np.mean(scores)), cv
+
+
 def layered_fit(
     fwd: ForwardModel,
     data: FitData,
@@ -257,36 +313,14 @@ def layered_fit(
     for z_c in rc.layered_zs:
         lf = _layer_model(geom, fwd.txedges, fwd.tyedges, float(z_c), rc.layered_thickness, cache_dir)
         ldata = fit_data(lf, omaps).restricted(active)
-        # full fit at this height
+        # full fit at this height (kept for the chi2 diagnostic)
         x_full, info_full = sirt_tv(lf, ldata, rc2)
-        entry = {"z": float(z_c), "chi2": info_full["best_chi2"], "cv": {}}
-        # cross-position validation
-        cv_scores = []
-        for train in lf.pose_ids:
-            keep = np.zeros(lf.A.shape[0], dtype=bool)
-            keep[lf.rows(train)] = True
-            x_tr, _ = sirt_tv(lf, ldata.restricted(keep), rc2)
-            for test in lf.pose_ids:
-                if test == train:
-                    continue
-                rows = lf.rows(test)
-                w = ldata.w[rows]
-                resid = ldata.lam[rows] - (lf.A @ x_tr)[rows]
-                sw = w.sum()
-                if sw > 0:
-                    resid = resid - (w * resid).sum() / sw  # free offset on the held-out view
-                r2 = w * resid**2
-                if cv_trim_pct is not None:
-                    pos = r2[r2 > 0]
-                    thr = np.percentile(pos, cv_trim_pct) if pos.size else np.inf
-                    kept = r2 <= thr
-                    score = float(r2[kept].sum() / max(np.count_nonzero(kept), 1))
-                else:
-                    score = float(np.sum(r2) / max(np.count_nonzero(w), 1))
-                entry["cv"][f"{train}->{test}"] = score
-                cv_scores.append(score)
-        entry["cv_mean"] = float(np.mean(cv_scores))
-        scan.append(entry)
+        cv_mean, cv = layer_cv_score(
+            geom, fwd.txedges, fwd.tyedges, omaps, rc2, float(z_c),
+            rc.layered_thickness, cache_dir, cv_trim_pct, active,
+        )
+        scan.append({"z": float(z_c), "chi2": info_full["best_chi2"],
+                     "cv": cv, "cv_mean": cv_mean})
 
     best = min(scan, key=lambda e: e["cv_mean"])
     lf = _layer_model(geom, fwd.txedges, fwd.tyedges, best["z"], rc.layered_thickness, cache_dir)

@@ -222,6 +222,7 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
 
     dip_layer_b64 = dip_scale = None
     clean_layer_b64 = clean_scale = None
+    dipclean_layer_b64 = dipclean_scale = None
     if tmaps is not None:
         def _dip_fallback():
             from ..enhance.context import load_context
@@ -231,6 +232,7 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
 
         dip_layer_b64, dip_scale = _embed_enhance("dip", _dip_fallback)
         clean_layer_b64, clean_scale = _embed_enhance("clean")
+        dipclean_layer_b64, dipclean_scale = _embed_enhance("dipclean")
 
     # Single-detector reconstructions: the same SIRT+TV solve trained on ONE
     # position only (volume_holdout_pos0/pos1.npz, written by reconstruct.py's
@@ -337,6 +339,8 @@ def build_viewer(run_dir: str | Path, out_path: str | Path | None = None) -> Pat
         "dip_scale": dip_scale,  # physical density = byte / scale
         "clean_b64": clean_layer_b64,  # nx*ny uint8 artifact-cleaned layer, or null
         "clean_scale": clean_scale,  # physical density = byte / scale
+        "dipclean_b64": dipclean_layer_b64,  # nx*ny uint8 DIP+cleaned layer, or null
+        "dipclean_scale": dipclean_scale,  # physical density = byte / scale
         "pos0_b64": pos0_b64,  # nx*ny uint8 single-detector (pos0-only) layer, or null
         "pos0_scale": pos0_scale,  # physical density = byte / scale
         "pos1_b64": pos1_b64,  # nx*ny uint8 single-detector (pos1-only) layer, or null

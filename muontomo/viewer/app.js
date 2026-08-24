@@ -26,6 +26,8 @@
   const dipLayer = V.dip_b64 ? decodeVolume(V.dip_b64) : null;
   // Optional artifact-cleaned layer (boundary blobs removed, denoised, sharpened).
   const cleanLayer = V.clean_b64 ? decodeVolume(V.clean_b64) : null;
+  // Optional DIP + artifact-cleaned combo (best beam positions + boundary removal).
+  const dipcleanLayer = V.dipclean_b64 ? decodeVolume(V.dipclean_b64) : null;
   // Optional single-detector reconstruction layers (nx*ny uint8, same grid):
   // the SIRT+TV solve trained on ONE position only, for comparing one detector
   // vs the two-detector fusion.
@@ -298,10 +300,11 @@
     const useData = state.surface === "data" && dataLayer;
     const useDip = state.surface === "dip" && dipLayer;
     const useClean = state.surface === "clean" && cleanLayer;
+    const useDipClean = state.surface === "dipclean" && dipcleanLayer;
     const useP0 = state.surface === "pos0" && pos0Layer;
     const useP1 = state.surface === "pos1" && pos1Layer;
     const layer2d = useData ? dataLayer : useDip ? dipLayer : useClean ? cleanLayer
-      : useP0 ? pos0Layer : useP1 ? pos1Layer : null;
+      : useDipClean ? dipcleanLayer : useP0 ? pos0Layer : useP1 ? pos1Layer : null;
     const rawAt = (ix, iy) => layer2d ? layer2d[ix * ny + iy] : field[(ix * ny + iy) * nz + iz];
 
     // Robust two-sided normalization: [p30, p92] of the slice's NONZERO values
@@ -324,7 +327,7 @@
     // [p35, p85] window clamps DIP's upper 15% to flat yellow and buries the
     // beams. A higher, wider window [p30, p97] spends the color range on DIP's
     // full tonal spread -- all five beams pop as distinct bright stripes.
-    const bimodal = useDip || useClean;  // sharp/denoised layers top out lower -> wider window
+    const bimodal = useDip || useClean || useDipClean;  // sharp/denoised layers top out lower -> wider window
     const pLo = bimodal ? 0.30 : 0.35;
     const pHi = bimodal ? 0.97 : 0.85;
     const vlo = nzv.length ? nzv[Math.floor(pLo * (nzv.length - 1))] : 0;
@@ -333,7 +336,7 @@
     // Each surface source stores byte values against its own scale (byte/scale =
     // physical density, or opacity for the measured backprojection).
     const surfScale = useData ? V.backproject_scale : useDip ? V.dip_scale : useClean ? V.clean_scale
-      : useP0 ? V.pos0_scale : useP1 ? V.pos1_scale : quantScale;
+      : useDipClean ? V.dipclean_scale : useP0 ? V.pos0_scale : useP1 ? V.pos1_scale : quantScale;
     updateColorbar(vlo, vhi, surfScale, useData);
 
     // Grid vertices + a "skirt": every perimeter vertex gets a twin dropped to
@@ -525,11 +528,12 @@
   $("surface").addEventListener("change", (e) => { state.surface = e.target.value; updateSlice(); });
   if (!dipLayer) { const o = $("surface-dip-opt"); if (o) o.remove(); }
   if (!cleanLayer) { const o = $("surface-clean-opt"); if (o) o.remove(); }
+  if (!dipcleanLayer) { const o = $("surface-dipclean-opt"); if (o) o.remove(); }
   if (!pos0Layer) { const o = $("surface-pos0-opt"); if (o) o.remove(); }
   if (!pos1Layer) { const o = $("surface-pos1-opt"); if (o) o.remove(); }
   if (!dataLayer) { const o = $("surface"); const d = [...o.options].find(x => x.value === "data"); if (d) d.remove(); }
   // Only the recon surface guaranteed -- hide the whole selector if nothing to compare against.
-  if (!dataLayer && !dipLayer && !cleanLayer && !pos0Layer && !pos1Layer) $("surface-row").style.display = "none";
+  if (!dataLayer && !dipLayer && !cleanLayer && !dipcleanLayer && !pos0Layer && !pos1Layer) $("surface-row").style.display = "none";
   // Full-room voxel volume: swap the active volume that the iso-surfaces and the
   // z-slice read, so the whole 3D voxel cloud can be inspected as another option.
   if (!fieldFull) { const r = $("fullvol-row"); if (r) r.style.display = "none"; }
@@ -598,6 +602,7 @@
     voxelCount: lastVoxelCount, showVoxels: state.showVoxels,
     thinLayer, sliceVisible, surface: state.surface,
     hasDataLayer: !!dataLayer, hasDipLayer: !!dipLayer, hasCleanLayer: !!cleanLayer,
+    hasDipCleanLayer: !!dipcleanLayer,
     hasPos0Layer: !!pos0Layer, hasPos1Layer: !!pos1Layer, hasFullVolume: !!fieldFull,
   });
   window.__setState = (partial) => {

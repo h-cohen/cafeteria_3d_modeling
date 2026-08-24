@@ -69,6 +69,11 @@ into a sharp, fully three-dimensional volume.
 <div class="cols">
 
 <h2>1&nbsp;&nbsp;Data and geometry</h2>
+<p>Atmospheric muons penetrate metres of rock and concrete, and the attenuation of their flux
+measures the amount of matter traversed &mdash; the principle behind muon transmission imaging, from
+the earliest overburden measurements [1] and pyramid surveys [2,&thinsp;3] to volcano radiography
+[4]; see [5,&thinsp;6] for reviews. This work applies it at room scale, with a deliberately minimal
+instrument: two detectors and one calibration exposure.</p>
 <p>Two identical tracking detectors were operated on the cafeteria floor at
 <i>pos0</i>&thinsp;=&thinsp;(0,&thinsp;0) and <i>pos1</i>&thinsp;&asymp;&thinsp;(1.78,&thinsp;0.72)&thinsp;m &mdash; a stereo baseline of
 <b>1.92&thinsp;m</b> &mdash; recording &sim;6.3&thinsp;M and &sim;2.4&thinsp;M muon tracks respectively, together with a
@@ -83,6 +88,10 @@ transverse beam. Their lateral positions are established model-free, directly fr
 parallax analysis of the two detectors&rsquo; back-projections:
 x&thinsp;=&thinsp;{&minus;3.12,&thinsp;&minus;1.54,&thinsp;0.14,&thinsp;1.64,&thinsp;3.32}&thinsp;m. These verified positions serve
 as the reference against which every reconstruction product is gated (Sec.&thinsp;2.3).</p>
+<h3>1.1&nbsp;&nbsp;Apparatus</h3>
+<p>[Hardware description to be completed by the experimental team: detector technology and active
+area (65&thinsp;&times;&thinsp;65&thinsp;cm aperture, four-layer coincidence), angular resolution and
+acceptance, trigger and readout, and the run periods of the three exposures.]</p>
 
 <h2>2&nbsp;&nbsp;Reconstruction methods</h2>
 <h3>2.1&nbsp;&nbsp;Forward model</h3>
@@ -99,7 +108,7 @@ offset absorbing residual normalisation error. The finite detector aperture and 
 by ray sub-sampling.</p>
 
 <h3>2.2&nbsp;&nbsp;Inversion</h3>
-<p>Volumes are solved by SIRT with a total-variation (TV) proximal step applied each iteration
+<p>Volumes are solved by SIRT [7] with a total-variation (TV) [8] proximal step applied each iteration
 (threshold &alpha;&thinsp;=&thinsp;0.08&thinsp;&times;&thinsp;p95(x), anisotropic in z), non-negativity clamping, and
 weighted least squares with per-bin statistical weights; the iterate with the best reduced &chi;&sup2;
 is retained. The per-pose offsets c<sub>p</sub> are re-estimated analytically each sweep. Two
@@ -117,8 +126,10 @@ the full grid across its physical thickness.</li>
 <p>Every product is subjected to model-free beam verification: peak positions of the reconstructed
 ceiling layer must match the data-derived beam positions to a mean |offset|&thinsp;&le;&thinsp;0.15&thinsp;m
 with exactly five beams recovered. The layered product scores 0.10&thinsp;m; enhancement stages
-(guided filtering, background-floor suppression, direction-aware sharpening) raise the layer&rsquo;s
-beam contrast-to-noise from 0.40 to 2.48 while preserving positions (offset 0.088&thinsp;m, PASS).
+(guided filtering [9], background-floor suppression, background-floor suppression, direction-aware sharpening) raise the layer&rsquo;s
+beam contrast-to-noise from 0.40 to 2.48 while preserving positions (offset 0.088&thinsp;m, PASS). Applying the artifact-removal stages on top of a Deep Image Prior
+reparameterisation [10] gives the best displayed surface: beam offset 0.04&thinsp;m at
+contrast-to-noise 4.1.
 Cross-position holdout volumes &mdash; the same solve trained on a single detector &mdash; are produced
 alongside every run for validation and comparison.</p>
 
@@ -184,6 +195,12 @@ The recovered-versus-injected relation is linear with unit slope; the model-free
 similarly but with larger scatter (full figure: <code>reports/autofocus_validation.png</code>). This
 ground-truth closure is what elevates the autofocused 7.0&thinsp;m from a plausible number to a
 validated measurement.</p>
+<table>
+<tr><th>injected (m)</th><th>CV scan (m)</th><th>NCC (m)</th></tr>
+<tr><td>6.6</td><td>6.4</td><td>6.4</td></tr>
+<tr><td>7.0</td><td>6.8</td><td>6.9</td></tr>
+<tr><td>7.4</td><td>7.3</td><td>7.3</td></tr>
+</table>
 
 <h3>3.5&nbsp;&nbsp;Aliasing analysis</h3>
 <p>A strictly periodic beam grid re-registers between the two views whenever the assumed height
@@ -332,6 +349,19 @@ is concrete: one added viewpoint shrinks the depth uncertainty &sim;3&times;, a 
 reaches beam-scale sharpness. That a result this close to the truth comes from two boxes of muon
 shadows is the strongest argument for the method &mdash; and for the third detector.</p>
 
+<h2>References</h2>
+<p style="font-size:8.2pt; line-height:1.35; color:#333;">
+[1] E.&thinsp;P. George, <i>Cosmic rays measure overburden of tunnel</i>, Commonwealth Engineer (1955) 455.<br>
+[2] L.&thinsp;W. Alvarez et al., <i>Search for hidden chambers in the pyramids</i>, Science 167 (1970) 832.<br>
+[3] K. Morishima et al., <i>Discovery of a big void in Khufu&rsquo;s Pyramid by observation of cosmic-ray muons</i>, Nature 552 (2017) 386.<br>
+[4] H.&thinsp;K.&thinsp;M. Tanaka et al., <i>High resolution imaging in the inhomogeneous crust with cosmic-ray muon radiography: the density structure below the volcanic crater floor of Mt.&thinsp;Asama, Japan</i>, Earth Planet. Sci. Lett. 263 (2007) 104.<br>
+[5] S. Procureur, <i>Muon imaging: principles, technologies and applications</i>, Nucl. Instrum. Meth. A 878 (2018) 169.<br>
+[6] L. Bonechi, R. D&rsquo;Alessandro, A. Giammanco, <i>Atmospheric muons as an imaging tool</i>, Rev. Phys. 5 (2020) 100038.<br>
+[7] P. Gilbert, <i>Iterative methods for the three-dimensional reconstruction of an object from projections</i>, J. Theor. Biol. 36 (1972) 105.<br>
+[8] L.&thinsp;I. Rudin, S. Osher, E. Fatemi, <i>Nonlinear total variation based noise removal algorithms</i>, Physica D 60 (1992) 259.<br>
+[9] K. He, J. Sun, X. Tang, <i>Guided image filtering</i>, IEEE Trans. Pattern Anal. Mach. Intell. 35 (2013) 1397.<br>
+[10] D. Ulyanov, A. Vedaldi, V. Lempitsky, <i>Deep image prior</i>, Proc. CVPR (2018) 9446.
+</p>
 <div class="footer">
 Artifacts: <code>runs/production/{volume_full3d.npz, volume.npz, viewer.html,
 autofocus_report.pdf}</code>, <code>reports/autofocus_validation.png</code>. Reproduce:

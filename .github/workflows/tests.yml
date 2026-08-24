@@ -1,0 +1,33 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # The viewer smoke test drives the built viewer.html in headless Chromium.
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      # torch / scikit-image are intentionally NOT installed: they are optional
+      # (muontomo.enhance imports them lazily) and every code path degrades
+      # gracefully without them -- CI verifies exactly that.
+      - name: Run test suite
+        run: python -m pytest tests/ -q

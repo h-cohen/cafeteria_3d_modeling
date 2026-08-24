@@ -184,43 +184,61 @@ def quick_focus(tmaps, geom, cfg, res_m: float = 0.15) -> dict:
     return focus_curve(a, b, m, zs, xs, ys)
 
 
-def _scan_zs(cfg) -> np.ndarray:
-    """Candidate heights for the CV scan: the assumed layer height +/- 1 m at 0.1 m
-    (a fine grid so the CV-vs-height curve is smooth around its minimum)."""
+def _scan_zs(cfg, step: float = 0.2) -> np.ndarray:
+    """Coarse candidate heights for the CV scan: the assumed layer height +/- 1 m."""
     if cfg.reconstruction.layered_zs:
         z0 = float(cfg.reconstruction.layered_zs[0])
     else:
         z0 = float(getattr(cfg.geometry, "ceiling_z_prior_m", 7.0))
     zmin = max(z0 - 1.0, max(cfg.geometry.pose(p).z for p in cfg.geometry.poses) + 1.0)
-    return np.round(np.arange(zmin, z0 + 1.0 + 1e-6, 0.1), 2)
+    return np.round(np.arange(zmin, z0 + 1.0 + 1e-6, step), 2)
 
 
-def cv_height_scan(cfg, tmaps, zs, cache_dir=None):
+def cv_height_scan(cfg, tmaps, zs=None, cache_dir=None,
+                   coarse_m: float = 0.2, fine_m: float = 0.1):
     """Authoritative, alias-robust autofocus: for each candidate height fit a thin
     ceiling layer to ONE detector and score how well it predicts the OTHER
-    (cross-position validation, via reconstruct.layered_fit). The finite room and
-    the physics model break the periodic-beam parallax aliasing that fools the
-    naive correlation. Returns (scan_list, best_z) where scan_list entries are
-    {z, cv_mean, chi2}; best_z minimizes cv_mean.
+    (cross-position validation, reconstruct.layer_cv_score -- no full both-pose
+    fit, which the scan does not need). The finite room and the physics model
+    break the periodic-beam parallax aliasing that fools naive correlation.
+
+    Two-stage by default (zs=None): a coarse `coarse_m` sweep over the +/- 1 m
+    band locates the valley, then a `fine_m` refinement fills in around the
+    coarse minimum -- same final resolution as a dense fine sweep at roughly
+    half the solves. Pass explicit `zs` for a single-stage scan on that grid.
+    Residuals are trimmed (worst 10% of bins per view) so isolated aliased
+    heights cannot spike the curve. Returns (scan_list, best_z); scan_list
+    entries are {z, cv_mean}, sorted by z.
     """
     from dataclasses import replace
 
-    from .forward import build_forward_model
     from .opacity import opacity_map
-    from .reconstruct import fit_data, layered_fit
+    from .reconstruct import layer_cv_score
 
     omaps = {p: opacity_map(t) for p, t in tmaps.items()}
     first = next(iter(tmaps.values()))
-    fwd = build_forward_model(cfg.geometry, first.txedges, first.tyedges, cache_dir=cache_dir)
-    data = fit_data(fwd, omaps)
-    rc = replace(cfg.reconstruction, algorithm="layered",
-                 layered_zs=tuple(float(z) for z in zs), tv_z_weight=0.0)
-    # Trim the worst 10% of residual bins per view: robust to the aliasing-induced
-    # outlier bins that otherwise spike the CV curve at isolated wrong heights.
-    _, info = layered_fit(fwd, data, rc, cfg.geometry, omaps, cache_dir=cache_dir,
-                          cv_trim_pct=90.0)
-    scan = [{"z": float(e["z"]), "cv_mean": float(e["cv_mean"]), "chi2": float(e["chi2"])}
-            for e in info["layer_scan"]]
+    rc2 = replace(cfg.reconstruction, algorithm="tv", tv_z_weight=0.0)
+    thickness = cfg.reconstruction.layered_thickness
+
+    def score(z: float) -> float:
+        cv_mean, _ = layer_cv_score(
+            cfg.geometry, first.txedges, first.tyedges, omaps, rc2,
+            float(z), thickness, cache_dir, cv_trim_pct=90.0,
+        )
+        return cv_mean
+
+    scored: dict[float, float] = {}
+    stage1 = [float(z) for z in (zs if zs is not None else _scan_zs(cfg, coarse_m))]
+    for z in stage1:
+        scored[round(z, 3)] = score(z)
+    if zs is None:  # refine around the coarse minimum
+        zc = min(scored, key=scored.get)
+        lo, hi = zc - coarse_m, zc + coarse_m
+        for z in np.round(np.arange(lo, hi + 1e-6, fine_m), 3):
+            z = float(z)
+            if round(z, 3) not in scored and z >= stage1[0] and z <= stage1[-1]:
+                scored[round(z, 3)] = score(z)
+    scan = [{"z": z, "cv_mean": v} for z, v in sorted(scored.items())]
     best = min(scan, key=lambda e: e["cv_mean"])
     return scan, float(best["z"])
 
@@ -248,14 +266,13 @@ def run_focus(run_dir, res_m: float = 0.1, window_m: float = 1.0, report: bool =
 
     # authoritative model-based cross-validation height-scan
     cache_dir = str(Path(run).parent / ".cache")
-    scan, cv_z = cv_height_scan(cfg, tmaps, _scan_zs(cfg), cache_dir=cache_dir)
+    scan, cv_z = cv_height_scan(cfg, tmaps, cache_dir=cache_dir)  # two-stage coarse->fine
 
     z0 = float(cfg.reconstruction.layered_zs[0]) if cfg.reconstruction.layered_zs else cv_z
     result = {
         "autofocus_z_m": round(cv_z, 2),
         "autofocus_method": "cross-validation height-scan (fit one detector, predict the other)",
-        "cv_scan": [{"z": e["z"], "cv_mean": round(e["cv_mean"], 4),
-                     "chi2": round(e["chi2"], 4)} for e in scan],
+        "cv_scan": [{"z": e["z"], "cv_mean": round(e["cv_mean"], 4)} for e in scan],
         "quicklook_z_m": curve["focus_z_m"],
         "quicklook_ncc": curve["focus_ncc"],
         "ncc_curve": {"zs_m": curve["zs_m"], "ncc": curve["ncc"]},
