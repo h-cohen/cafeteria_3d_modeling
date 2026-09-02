@@ -17,9 +17,10 @@ paper-style write-up of the full-room voxel model and the two-detector limits.
   same floor (6.3M / 2.4M tracks)
 
 The angular flux map `txty` (tan θx vs tan θy, 800×800 bins over ±2) is the
-primary analysis histogram; `XY01m..XY10m` are back-projected planes at fixed
-heights, useful for diagnostics but not physically independent of `txty` for a
-single position.
+primary analysis histogram. `XY01m..XY10m` are **single-detector refocused**
+maps — `txty` sheared track-by-track by `t_corr = t + b/H` at H = 1/2/5/7/10 m.
+They are genuinely not a rescaling of `txty` and do carry (weak) depth
+information; see "Single-detector refocusing" below for what they are worth.
 
 ## Install
 
@@ -39,8 +40,10 @@ uv pip install scikit-image pywavelets
 ## Physics model
 
 For each angular bin at each position: transmission `T = N_cafe / (s·N_sky)`,
-opacity `λ = -ln T ≈ ∫κ dl` along that bin's ray. The detector's 65×65 cm
-aperture is comparable to the beam pitch projected to the detector, so each
+opacity `λ = -ln T ≈ ∫κ dl` along that bin's ray. The detector aperture
+(`aperture_m = 0.65`, but see the open item under "Geometry self-calibration" —
+the measured active width is 0.354 m) is comparable to the beam pitch projected
+to the detector, so each
 bin is modeled as a bundle of parallel sub-rays across the aperture
 (angle-dependent, narrowing with the 4-layer coincidence requirement), not a
 pinhole. With only two views this is severely limited-angle tomography: expect
@@ -52,12 +55,13 @@ depth-degeneracy quantification in `reports/voxel_reconstruction_report.pdf`.
 
 ```
 scripts/inspect_data.py        # Stage 0: dump histogram metadata, convention checks
+scripts/refocus_analysis.py     # single-detector refocusing: is the DAQ's XY0*m shear useful?
 muontomo.selfcal                # geometry self-calibration (Stage A diagnostic, Stage B authoritative)
 muontomo.reconstruct            # produce a run: volume.npz + holdout volumes
 muontomo.evaluate                # metrics.json scorecard + PNG set + autofocus report
 muontomo.focus                   # ceiling-height autofocus: CV height-scan + quick-look + height map
 muontomo.backproject             # model-free backprojection of -ln(T) onto the ceiling plane
-muontomo.beams                   # model-free beam verification (parallax triangulation + positions)
+muontomo.beams                   # model-free beam verification (joint LSQ triangulation + positions)
 muontomo.enhance                 # enhancement suite: guided | dip | pnp | clean | dipclean
 muontomo.uncertainty             # bootstrap error bars: layer sigma-map, beam pos/amp errors, z* CI
 muontomo.compare                 # IMPROVED/REGRESSED verdict between two runs
@@ -120,9 +124,74 @@ measures it from the data by a plane-sweep autofocus:
   ceilings injected at 6.6/7.0/7.4 m are recovered to ~0.2 m
   (`python scripts/autofocus_validation.py` →
   `reports/autofocus_validation.png`).
+- **Independent cross-check**: `muontomo.beams` triangulates the height by a
+  joint least-squares ray intersection over every matched beam in both axes
+  (`beams.triangulate`), giving **6.955 ± 0.086 m** — model-free, and
+  independent of both the solver and the CV scan. Sub-bin peak refinement
+  (`beam_peaks_subbin`) is essential: with a 1.78 m baseline, one 0.04 tan bin
+  of quantization moves a single-pair closed-form height by ~1 m.
+  Caveat: `z = dx/Δt` scales with the assumed baseline, so a 1% baseline error
+  is worth 0.07 m — more than the statistical error bar.
+- **Scale closure** (`beams.scale_closure`): angles alone fix only the ratio
+  `z/d`. Each detector separately measures the beam pattern's angular period
+  (0.2329 / 0.2321 tan-units — no baseline, pose or height involved), and
+  `pitch = z × period`, so baseline, height and pitch form a closed triple:
+
+  | surveyed baseline | ceiling height | implied beam pitch |
+  | --- | --- | --- |
+  | 1.92 m (this calibration) | 6.96 m | 1.62 m |
+  | 2.40 m | 8.71 m | 2.03 m |
+
+  **One external length is required** and no algorithm work substitutes for it:
+  a tape measure on either the detector separation or the ceiling beam spacing
+  fixes all three. The run's `scale_closure` block reports `z_per_baseline` and
+  `pitch_per_baseline` so any surveyed `d` can be substituted without re-running.
 
 Every `evaluate` regenerates `runs/<run>/autofocus_report.pdf` — a 3-page
 plain-language report of the method, this run's numbers, and the validation.
+
+## Single-detector refocusing (evaluated, not adopted)
+
+The DAQ's `XY01m/02m/05m/07m/10m` histograms are the raw `txty` map sheared
+track-by-track by `t_corr = t + b/H` (`b` = bottom-layer hit position, `H` =
+assumed height) — the intra-detector analogue of two-detector parallax
+focusing, at the scale of the aperture rather than the stereo baseline.
+`python scripts/refocus_analysis.py` → `reports/refocus_analysis.{png,json}`
+establishes:
+
+- **They really are that shear**, not a metric rescaling: `E[t_corr]·H −
+  E[t_∞]·H = E[b]` is constant to 0.25 mm (0.1934 m) across H = 1…10 m, in all
+  three files and both axes. An earlier `selfcal.py` docstring claimed the
+  opposite; it is corrected.
+- **Focusing is real but weak**: both focus metrics prefer the
+  independently-known 7.0 m ceiling, but vary only **~7%** over 5–10 m while
+  collapsing 5× by H = 1. A 400-replica Poisson bootstrap puts the peak at 7 m in
+  **66%** of replicas (signal-band power) / **53%** (beam modulation), with most of
+  the rest at 10 m — a preference, not a measurement. It excludes a low ceiling
+  decisively and cannot localize a high one. The flatness is geometric — residual
+  blur is `A·|1/H − 1/H_true|` — so no choice of metric recovers sensitivity.
+- **Which focus metric**: conventional sharpness (gradient energy, Laplacian
+  variance, total variation) *fails* here — the maps are noise-dominated at high
+  frequency (Poisson floor ≈ 3× the signal power) and the shear smooths noise with
+  signal, so raw high-frequency measures track the shear amount and rise
+  monotonically with H; all four tested peak at the scan edge. Two work:
+  *beam modulation depth* (narrowband at the known pitch — scene-specific), and
+  **`focus.spectral_focus` / `focus.signal_band`** — subtract the analytic Poisson
+  floor from the 2-D power spectrum and integrate over the band where the scene
+  exceeds it, detected from the data. The latter presumes nothing about the scene,
+  and separates refocused from un-refocused by 16% versus 1%.
+- **The practical gain is small**: beam FWHM 0.534 → 0.511 m (4.4%). The blur is
+  set not by the aperture but by the spread of `b` within one angular bin, which
+  the four-layer coincidence makes several times narrower.
+- **It must not be fed to the reconstruction.** Since `t_corr = X/H`, a refocused
+  bin is a source position over H, not a direction, and the forward model's
+  `pose + t·(z − pose.z)` coincides with it only at `z = H` exactly. Off that
+  plane it is a rescaling about the detector rather than parallax. Measured:
+  beam offset 0.100 m → 1.404 m, far past the 0.15 m distrust gate.
+
+This also settles the proposed assume-H → sharpen → re-measure-H iteration: the
+sharpening step destroys the very parallax the height scan reads, and there is
+only 3% of signal to iterate on. Not worth building for this geometry.
 
 ## Uncertainties and systematics
 
@@ -155,6 +224,21 @@ cross-position chi2 through the full aperture-aware forward model in a bounded
 window around the user-supplied prior; validated on phantom data with an
 injected pose error (`tests/test_selfcal.py`). The production pose is
 dx≈1.78 m, dy≈0.72 m, yaw≈0.05° (`configs/production.json`).
+
+**Open item — the aperture is wrong, and fixing it is not a config edit.** The
+hit-position histograms are a hard-edged flat top: 23 bars × 1.538 cm =
+**0.354 m** active width, against `aperture_m = 0.65` in the config. This
+survived because the angular acceptance constrains only the *ratio*
+`aperture_m / detector_height_m` (0.65/0.8 = 0.81 vs a measured cutoff of 0.86),
+while the absolute value sets the forward model's blur. Correcting it alone
+improves χ² 2.086 → 1.964, CNR 1.261 → 1.407 and noise 0.185 → 0.147, but pushes
+the beam offset to 0.236 m; re-running Stage B on top moves pos1 by 0.119 m in
+both axes and makes it worse still (offset 0.416 m, noise 0.328) even as CNR
+leaps to 3.18 — crisp beams in the wrong place. Stage B's cross-position χ²
+objective will buy fit quality with a pose shift, so aperture, pose and height
+are entangled; correcting the aperture requires re-deriving the pose against an
+objective that includes the model-free beam positions. Production is
+deliberately left on the old value until then.
 
 ## Enhancement suite (`muontomo/enhance/`)
 
@@ -191,11 +275,13 @@ collapsible panel, PNG export.
 pytest tests/ -q
 ```
 
-57 tests cover calibration math, raycasting (adjoint identity, path lengths),
+68 tests cover calibration math, raycasting (adjoint identity, path lengths),
 full phantom round-trips per algorithm, every metric on hand-computed
 fixtures, self-calibration recovery of an injected pose error, the autofocus
 (NCC curve, height map, two-stage CV scan, real CV scorer on a tiny phantom),
-the artifact-cleanup enhancers and their anti-hallucination gate, the
-autofocus PDF report, and the viewer (build + Playwright smoke test). The
+the bootstrap uncertainty propagation, the refocus edge-shift correction and
+the joint triangulation least-squares (including that it declines to guess with
+a single pose), the artifact-cleanup enhancers and their anti-hallucination
+gate, the autofocus PDF report, and the viewer (build + Playwright smoke test). The
 suite runs without torch/scikit-image — CI (`.github/workflows/tests.yml`)
 verifies exactly that configuration.

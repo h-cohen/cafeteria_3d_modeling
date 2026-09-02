@@ -57,6 +57,15 @@ class BinningConfig:
     hist: str = "txty"
     t_max: float = 1.0  # crop |tx|,|ty| to this before rebinning
     rebin: int = 8  # 800 bins over +-2 -> crop to +-1 (400) -> 50x50 of width 0.04
+    # The DAQ's XY0*m histograms are single-detector REFOCUSED maps: each track is
+    # sheared by t -> t + b/H, with b the bottom-layer hit position and H the assumed
+    # source height (see muontomo.selfcal.depth_from_parallax). Because b is recorded
+    # in raw bar coordinates whose origin is not the detector centre, the shear also
+    # injects a constant translation b0/H, which back-projects to a b0 lateral shift of
+    # the whole image. `refocus_origin_m` is that bar-frame origin b0; setting it makes
+    # prepare_angular_hist remove the translation exactly, by shifting the tan bin
+    # EDGES (no resampling). Leave at None for un-refocused `txty`.
+    refocus_origin_m: float | None = None
 
 
 @dataclass

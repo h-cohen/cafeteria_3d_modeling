@@ -65,12 +65,32 @@ def _xy_transmission(ds: Dataset, source: str, name: str, cal: CalibrationConfig
 def depth_from_parallax(ds: Dataset, cal: CalibrationConfig, max_shift_bins: int = 15) -> dict:
     """Select the ceiling height by cross-position registration strength.
 
-    Back-projecting a SINGLE position's tracks to any height is a pure coordinate
-    rescaling (a bijective reparametrization of tan-space), not a blur, so it
-    carries no depth information by itself. Depth comes from combining the TWO
-    positions: parallax between them cancels under a single rigid translation
-    only at the true structure height, so the height with the highest best-shift
-    NCC between pos0 and pos1's XY-transmission maps is the depth estimate.
+    NOTE (corrected): an earlier version of this docstring claimed the XY maps are
+    a pure coordinate rescaling of tan-space and therefore carry no depth
+    information on their own. That is wrong. The DAQ builds them by the
+    single-detector shear
+
+        t_corr = t + b/H       (b = bottom-layer hit position, H = assumed height)
+
+    which is the intra-detector analogue of two-detector parallax focusing: it
+    collapses each track to a common vertex, and is exact only at the true H.
+    Unlike a rescaling, a shear of the (position, angle) light field is NOT
+    invertible once position is marginalized away, so it does carry depth
+    information -- weakly, since the lever is the ~0.65 m aperture rather than the
+    1.92 m stereo baseline.
+
+    Verified on the campaign data: under the shear, E[t_corr]*H - E[t_inf]*H =
+    E[b], independent of H. Measured E[b] = 0.1933 +/- 0.0002 m across
+    H = 1,2,5,7,10 m, in all three files and both axes; the maps are in tan units
+    on txty's axis, preserve total counts exactly, and converge onto txty as
+    H -> infinity. See reports/refocusing_response.md.
+
+    This function nonetheless still scores by CROSS-position registration, which
+    is the right choice: the single-detector sharpness route carries a monotonic
+    lever-arm bias (back-projection fans widen with H), whereas parallax between
+    the two positions cancels under a single rigid translation only at the true
+    structure height. So the height with the highest best-shift NCC between pos0
+    and pos1's XY-transmission maps is the depth estimate.
     """
     curve = {}
     for name, h in XY_HEIGHTS_M.items():

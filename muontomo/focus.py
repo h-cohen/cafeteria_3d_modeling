@@ -62,6 +62,69 @@ def _sharpness(img: np.ndarray, mask: np.ndarray) -> float:
     return float(np.nanmean(gx**2 + gy**2) / var) if var > 0 else np.nan
 
 
+def _windowed_spectrum(tm, t_window: float):
+    """Power spectrum of one detector's opacity map, with its Poisson noise floor.
+
+    Returns (power, noise_floor, radial_freq). The floor is analytic rather than fitted:
+    the per-bin opacity variance is known from the counts, and white noise of variance
+    s^2 through a window w contributes E|FFT|^2 = mean(s^2) * sum(w^2) to every mode.
+    """
+    kx = np.abs(tm.txcenters) < t_window
+    ky = np.abs(tm.tycenters) < t_window
+    with np.errstate(divide="ignore", invalid="ignore"):
+        lam = np.where(tm.mask, -np.log(np.clip(tm.T, 0.05, None)), np.nan)[np.ix_(kx, ky)]
+        sig = np.where(tm.mask, tm.sigma_T / np.clip(tm.T, 1e-9, None), np.nan)[np.ix_(kx, ky)]
+    ok = np.isfinite(lam) & np.isfinite(sig)
+    if ok.sum() < 64:
+        return None, None, None
+    f = np.where(ok, lam, lam[ok].mean())
+    f = f - f.mean()
+    w = np.outer(np.hanning(f.shape[0]), np.hanning(f.shape[1]))
+    power = np.abs(np.fft.fft2(f * w)) ** 2
+    noise = float(np.mean(sig[ok] ** 2) * np.sum(w**2))
+    r = np.hypot(*np.meshgrid(np.fft.fftfreq(f.shape[0]),
+                              np.fft.fftfreq(f.shape[1]), indexing="ij"))
+    return power, noise, r
+
+
+def signal_band(tm, t_window: float = 0.5, snr_min: float = 3.0,
+                n_bands: int = 40) -> tuple[float, float] | None:
+    """Spatial-frequency band in which the scene rises above the Poisson floor.
+
+    Detected from the data, so it presumes nothing about the structure -- unlike a
+    modulation depth evaluated at a known beam pitch, which only works for a scene whose
+    period you already know. Returns (f_lo, f_hi) in cycles per bin, or None.
+    """
+    power, noise, r = _windowed_spectrum(tm, t_window)
+    if power is None:
+        return None
+    edges = np.linspace(0, 0.5, n_bands + 1)
+    ctr = 0.5 * (edges[:-1] + edges[1:])
+    keep = []
+    for i, c in enumerate(ctr):
+        m = (r >= edges[i]) & (r < edges[i + 1])
+        if m.any() and power[m].mean() / noise > snr_min:
+            keep.append(c)
+    return (float(min(keep)), float(max(keep))) if keep else None
+
+
+def spectral_focus(tm, band: tuple[float, float], t_window: float = 0.5) -> float:
+    """Noise-corrected signal power inside `band` -- a scene-agnostic focus metric.
+
+    Broadband sharpness (gradient energy, Laplacian variance, total variation) does NOT
+    work on refocused maps: they are noise-dominated at high frequency, and the shear
+    smooths noise along with signal, so any raw high-frequency measure just tracks how
+    much shear was applied and rises monotonically with H. Subtracting the analytic
+    Poisson floor and restricting to the band where the scene actually has signal removes
+    that confound, and the result peaks at the true height without knowing the scene.
+    """
+    power, noise, r = _windowed_spectrum(tm, t_window)
+    if power is None:
+        return float("nan")
+    sel = (r >= band[0] - 1e-9) & (r <= band[1] + 1e-9)
+    return float(np.maximum(power[sel] - noise, 0.0).sum())
+
+
 def _local_ncc(a: np.ndarray, b: np.ndarray, size: int) -> np.ndarray:
     """Per-pixel windowed NCC via box filters; NaN where local coverage is thin."""
     from scipy.ndimage import uniform_filter

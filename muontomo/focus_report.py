@@ -46,7 +46,8 @@ P1_REFOCUS = (
 )
 
 P2_METRICS = (
-    "Scoring metrics.  Two independent measures are evaluated at each candidate height.\n\n"
+    "Scoring metrics.  Several independent measures are evaluated, three of them scanned\n"
+    "across candidate heights and the fourth solved directly.\n\n"
     "Cross-validation residual (primary).  A thin ceiling layer is fitted to one detector and "
     "used to predict the second detector's measurement. The prediction residual (mean squared, "
     "with the worst 10% of bins trimmed so the estimate does not hinge on a few aliasing-induced "
@@ -60,12 +61,27 @@ P2_METRICS = (
     "consistency check, not as the reported value.\n\n"
     "Height map.  Repeating the correlation within local windows yields a per-region height "
     "estimate. An approximately constant map (as obtained here) confirms a single planar ceiling; "
-    "large spatial variation would indicate a sloped or stepped ceiling."
+    "large spatial variation would indicate a sloped or stepped ceiling.\n\n"
+    "Ray-intersection triangulation (independent cross-check).  Each detector's peak in the "
+    "opacity profile fixes a ray to a beam; a beam at height z and lateral position X is seen at "
+    "tan(theta) = (X - p_i)/(z - z_i). Requiring that all beams share one ceiling plane turns the "
+    "per-pair closed form z = dx/(t1 - t2) into an overdetermined least-squares fit, whose "
+    "residual scatter additionally tests whether a single plane explains the data. This uses only "
+    "peak positions in the calibrated maps -- no solver, and none of the machinery above -- so it "
+    "is a genuine cross-check rather than a restatement. Sub-bin peak refinement is essential: at "
+    "this baseline one angular bin of quantization moves a single-pair height by about a metre, "
+    "which is why the closed form is used as a joint fit over many beams and not pairwise. One "
+    "caveat when quoting it: z is proportional to the assumed baseline, so a 1% baseline error "
+    "shifts it by more than the statistical uncertainty."
 )
 
 P2_LIMITS = (
-    "Limitations.  (i) At least two detectors are required; a single view carries no height "
-    "information. (ii) A strictly periodic beam pattern admits aliased solutions at heights "
+    "Limitations.  (i) At least two detectors are required in practice. A single view is not "
+    "strictly height-blind -- refocusing its own tracks by the intra-detector shear does bring the "
+    "image into focus at the true height -- but the lever is the detector aperture rather than the "
+    "inter-detector baseline, and the resulting focus metric varies by only a few percent over the "
+    "plausible height range, so it excludes a low ceiling and cannot localise a high one. "
+    "(ii) A strictly periodic beam pattern admits aliased solutions at heights "
     "spaced by pitch x lever / baseline; for this geometry the nearest alias lies about 6 m from "
     "the true height, outside the physically plausible range. (iii) The estimate assumes a single "
     "planar layer, an assumption tested by the height map."
@@ -116,13 +132,14 @@ def render_report(run, cfg, result: dict, xs, ys, ref_z, ref_a, ref_b) -> Path:
     z_af = result["autofocus_z_m"]
     z_ql = result["quicklook_z_m"]
 
-    beams_x, n_beams, beam_off = [], None, None
+    beams_x, n_beams, beam_off, tri = [], None, None, {}
     mfile = run / "metrics.json"
     if mfile.exists():
         b = json.loads(mfile.read_text()).get("beams") or {}
         beams_x = b.get("beams_x_data_m", []) or []
         n_beams = b.get("n_beams_data")
         beam_off = b.get("mean_abs_beam_offset_m")
+        tri = b.get("triangulation") or {}
 
     pdf_path = run / "autofocus_report.pdf"
     with PdfPages(pdf_path) as pdf:
@@ -133,17 +150,21 @@ def render_report(run, cfg, result: dict, xs, ys, ref_z, ref_a, ref_b) -> Path:
                  "two-detector parallax", fontsize=10.5, color="#555")
 
         # result banner
-        axb = fig.add_axes([0.06, 0.882, 0.88, 0.050]); axb.axis("off")
+        axb = fig.add_axes([0.06, 0.876, 0.88, 0.056]); axb.axis("off")
         axb.add_patch(FancyBboxPatch((0, 0), 1, 1, transform=axb.transAxes,
                       boxstyle="round,pad=0.015", fc="#eaf3ec", ec="#2e7d47", lw=1.5))
         axb.text(0.025, 0.5, "AUTOFOCUS HEIGHT", transform=axb.transAxes, va="center",
                  fontsize=10, color="#2e7d47", weight="bold")
         axb.text(0.30, 0.5, f"{z_af:.1f} m", transform=axb.transAxes, va="center",
                  fontsize=22, weight="bold", color="#1b5e2f")
-        axb.text(0.50, 0.68, "cross-validation estimate (primary)", transform=axb.transAxes,
+        axb.text(0.50, 0.79, "cross-validation estimate (primary)", transform=axb.transAxes,
                  va="center", fontsize=9, color="#2e7d47")
-        axb.text(0.50, 0.30, f"two-view correlation (secondary): {z_ql:.1f} m",
+        axb.text(0.50, 0.50, f"two-view correlation (secondary): {z_ql:.1f} m",
                  transform=axb.transAxes, va="center", fontsize=9, color="#999")
+        if tri.get("ok"):
+            axb.text(0.50, 0.21, "independent triangulation: "
+                     f"{tri['z_m']:.2f} +/- {tri['z_sigma_m']:.2f} m",
+                     transform=axb.transAxes, va="center", fontsize=9, color="#2e7d47")
 
         y = _flow(fig, 0.06, 0.856, P1_OBJECTIVE)
         y = _flow(fig, 0.06, y - 0.006, P1_PRINCIPLE)
@@ -192,7 +213,7 @@ def render_report(run, cfg, result: dict, xs, ys, ref_z, ref_a, ref_b) -> Path:
         y = _flow(fig, 0.06, y - 0.004, P2_LIMITS, fs=8.9, color="#444")
 
         # metrics table
-        fig.text(0.06, y - 0.004, "Quantitative summary (this run)", fontsize=10, weight="bold")
+        fig.text(0.06, y - 0.014, "Quantitative summary (this run)", fontsize=10, weight="bold")
         rows = [
             ("Autofocus height (cross-validation, primary)", f"{z_af:.1f} m"),
             ("Two-view correlation height (secondary)", f"{z_ql:.1f} m"),
@@ -204,6 +225,10 @@ def render_report(run, cfg, result: dict, xs, ys, ref_z, ref_a, ref_b) -> Path:
             rows.append(("Beams detected in the raw transmission data", f"{n_beams}"))
         if beam_off is not None:
             rows.append(("Reconstruction beam-position error", f"{beam_off:.2f} m"))
+        if tri.get("ok"):
+            rows.append((f"Ray-intersection triangulation ({tri['n_features_x']}"
+                         f"+{tri['n_features_y']} beams, independent)",
+                         f"{tri['z_m']:.2f} +/- {tri['z_sigma_m']:.2f} m"))
         th = 0.025 * len(rows)
         ytab = y - 0.028 - th
         axtab = fig.add_axes([0.06, ytab, 0.88, th]); axtab.axis("off")

@@ -1,197 +1,202 @@
 <!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rolling Status — cafeteria_3d_modeling</title>
 <style>
-  :root{
-    --bg:#f6f7f9; --panel:#ffffff; --ink:#1a1d21; --muted:#5b6472; --line:#e3e7ec;
-    --accent:#2e7d47; --accent2:#8c1d40; --chip:#eef2f6; --shadow:0 1px 3px rgba(20,30,40,.08);
+:root {
+  color-scheme: light;
+  --bg:#f7f7f5; --card:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --ink3:#78766f;
+  --grid:#e6e5e1; --edge:#9c9a93; --rule:#e2e1dc;
+  --s0: #2a78d6;
+  --s1: #eb6834;
+  --s2: #1baf7a;
+  --s3: #eda100;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg:#131312; --card:#1d1d1b; --ink:#fff; --ink2:#c3c2b7; --ink3:#96948b;
+    --grid:#302f2c; --edge:#7d7b74; --rule:#2c2b28;
+    --s0: #3987e5;
+    --s1: #d95926;
+    --s2: #199e70;
+    --s3: #c98500;
   }
-  @media (prefers-color-scheme: dark){
-    :root{
-      --bg:#101418; --panel:#181d23; --ink:#e8eaed; --muted:#9aa4b1; --line:#2a323b;
-      --accent:#5bbf7d; --accent2:#e26d94; --chip:#20272f; --shadow:0 1px 3px rgba(0,0,0,.4);
-    }
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0}
-  body{background:var(--bg);color:var(--ink);
-    font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    padding:32px 20px 64px;}
-  .wrap{max-width:900px;margin:0 auto}
-  header h1{font-size:22px;margin:0 0 4px}
-  header p{color:var(--muted);margin:0 0 24px;font-size:13.5px}
-  .tiles{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 28px}
-  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:14px 18px;box-shadow:var(--shadow);min-width:118px}
-  .tile .n{font-size:26px;font-weight:700;line-height:1}
-  .tile .l{color:var(--muted);font-size:12px;margin-top:4px;letter-spacing:.02em}
-  .tile.next .n{color:var(--accent2)}
-  .tile.sess .n{color:var(--accent)}
-  .flow,.chart{background:var(--panel);border:1px solid var(--line);border-radius:10px;
-    padding:16px 18px;box-shadow:var(--shadow);margin:0 0 28px;overflow-x:auto}
-  .flow h2,.tl h2,.chart h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;
-    color:var(--muted);margin:0 0 12px}
-  .tl{margin-top:6px}
-  .entry{position:relative;background:var(--panel);border:1px solid var(--line);
-    border-radius:10px;padding:16px 18px 14px 20px;box-shadow:var(--shadow);margin:0 0 16px}
-  .entry::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;
-    border-radius:4px;background:var(--accent)}
-  .entry .date{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-  .entry h3{margin:2px 0 8px;font-size:16px}
-  .kv{margin:6px 0}
-  .kv .k{font-weight:600;color:var(--accent)}
-  .kv.res .k{color:var(--accent2)}
-  ul{margin:6px 0 2px;padding-left:20px}
-  li{margin:2px 0}
-  details{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
-  summary{cursor:pointer;color:var(--muted);font-size:13px;user-select:none}
-  details[open] summary{margin-bottom:6px}
-  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12.5px}
-  svg{max-width:100%;height:auto;display:block}
-  .node text{font:600 12px system-ui,sans-serif}
-  .sub{font:11px system-ui;fill:var(--muted)}
-  .axis{font:11px system-ui;fill:var(--muted)}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>Rolling Status — cafeteria_3d_modeling</h1>
-    <p>Running log of progress across sessions · regenerated from <code>rolling_status.md</code></p>
-  </header>
+}
+* { box-sizing:border-box; }
+body { margin:0; padding:32px 20px 64px; background:var(--bg); color:var(--ink);
+  font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+.wrap { max-width:940px; margin:0 auto; }
+h1 { font-size:26px; margin:0 0 4px; letter-spacing:-.02em; }
+.sien { color:var(--ink3); font-size:13.5px; margin:0 0 26px; }
+h2 { font-size:12px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--ink3); margin:34px 0 12px; font-weight:600; }
+code { font:12.5px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+  background:var(--grid); padding:1px 4px; border-radius:3px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px; margin-bottom:6px; }
+.tile { background:var(--card); border:1px solid var(--rule); border-radius:10px;
+  padding:14px 16px; }
+.tile .n { font-size:27px; font-weight:650; letter-spacing:-.02em; }
+.tile .k { font-size:12px; color:var(--ink3); margin-top:2px; }
+.panel { background:var(--card); border:1px solid var(--rule); border-radius:10px;
+  padding:16px; overflow-x:auto; }
+.fl-d { font-size:10.5px; fill:var(--ink3); }
+.fl-t { font-size:11.5px; fill:var(--ink); font-weight:550; }
+.ax { font-size:11px; fill:var(--ink3); }
+.ax-t { font-size:10.5px; fill:var(--ink3); }
+.val { font-size:13px; fill:var(--ink); font-weight:650; }
+.tl { position:relative; margin-top:6px; padding-left:26px; }
+.tl::before { content:""; position:absolute; left:5px; top:8px; bottom:8px;
+  width:2px; background:var(--rule); }
+.ev { position:relative; background:var(--card); border:1px solid var(--rule);
+  border-left:3px solid var(--accent); border-radius:10px;
+  padding:15px 17px; margin-bottom:14px; }
+.ev .dot { position:absolute; left:-26px; top:20px; width:11px; height:11px;
+  border-radius:50%; background:var(--accent);
+  box-shadow:0 0 0 3px var(--bg); }
+.ev header { display:flex; justify-content:space-between; align-items:baseline;
+  gap:12px; flex-wrap:wrap; margin-bottom:9px; }
+.ev h3 { font-size:16px; margin:0; letter-spacing:-.01em; }
+.ev time { font-size:12px; color:var(--ink3); white-space:nowrap; }
+.lbl { font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink3); font-weight:650; margin-right:7px; }
+.goal, .res { margin:0 0 7px; color:var(--ink2); font-size:14px; }
+.res { color:var(--ink); }
+details { margin-top:9px; border-top:1px solid var(--rule); padding-top:9px; }
+summary { cursor:pointer; font-size:12.5px; color:var(--ink3); }
+summary:hover { color:var(--ink); }
+.sub { font-size:10px; text-transform:uppercase; letter-spacing:.07em;
+  color:var(--ink3); font-weight:650; margin:10px 0 5px; }
+ul { margin:0; padding-left:19px; }
+li { margin-bottom:5px; font-size:13.5px; color:var(--ink2); }
+.nx li { color:var(--ink2); }
+footer { margin-top:30px; font-size:12px; color:var(--ink3); }
+</style></head><body><div class="wrap">
 
-  <div class="tiles">
-    <div class="tile sess"><div class="n">3</div><div class="l">SESSIONS LOGGED</div></div>
-    <div class="tile next"><div class="n">2</div><div class="l">OPEN&nbsp;“NEXT”&nbsp;ITEMS</div></div>
-    <div class="tile"><div class="n">59</div><div class="l">TESTS (CI GREEN)</div></div>
-    <div class="tile"><div class="n">&plusmn;0.12&thinsp;m</div><div class="l">AUTOFOCUS 68% CI</div></div>
-  </div>
+<h1>Rolling Status</h1>
+<p class="sien">cafeteria_3d_modeling · 5 sessions · 2026-08-13 → 2026-09-02
+· regenerated from <code>rolling_status.md</code></p>
 
-  <div class="flow">
-    <h2>Project progression</h2>
-    <svg viewBox="0 0 940 74" role="img" aria-label="Session progression">
-      <defs>
-        <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
-          <path d="M0,0 L7,3 L0,6 Z" fill="var(--muted)"/>
-        </marker>
-      </defs>
-      <line x1="92" y1="37" x2="122" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
-      <line x1="356" y1="37" x2="386" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
-      <line x1="636" y1="37" x2="666" y2="37" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#arw)"/>
-      <g class="node">
-        <circle cx="50" cy="37" r="22" fill="none" stroke="var(--muted)" stroke-width="1.5"/>
-        <text x="50" y="41" text-anchor="middle" fill="var(--muted)">start</text>
-      </g>
-      <g class="node">
-        <rect x="130" y="14" width="226" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
-        <text x="243" y="34" text-anchor="middle" fill="var(--ink)">Autofocus + report</text>
-        <text x="243" y="50" text-anchor="middle" class="sub">08-13 am · CV height-scan → 7.0 m</text>
-      </g>
-      <g class="node">
-        <rect x="394" y="14" width="242" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
-        <text x="515" y="34" text-anchor="middle" fill="var(--ink)">Full-room voxels + paper</text>
-        <text x="515" y="50" text-anchor="middle" class="sub">08-13 pm · clean 6× CNR · 6-pg report</text>
-      </g>
-      <g class="node">
-        <rect x="674" y="14" width="252" height="46" rx="9" fill="var(--chip)" stroke="var(--accent)" stroke-width="1.6"/>
-        <text x="800" y="34" text-anchor="middle" fill="var(--ink)">Hardening + error bars</text>
-        <text x="800" y="50" text-anchor="middle" class="sub">08-24 · 4× faster · z* ±0.12 m · MCS bound</text>
-      </g>
-    </svg>
-  </div>
-
-  <div class="chart">
-    <h2>Test-suite growth per session</h2>
-    <svg viewBox="0 0 560 130" role="img" aria-label="Tests per session: 43, 57, 59">
-      <line x1="60" y1="100" x2="540" y2="100" stroke="var(--line)" stroke-width="1"/>
-      <g>
-        <rect x="90"  y="41.7" width="90" height="58.3" rx="3" fill="var(--accent)" opacity="0.55"/>
-        <rect x="240" y="22.7" width="90" height="77.3" rx="3" fill="var(--accent)" opacity="0.75"/>
-        <rect x="390" y="20"   width="90" height="80"   rx="3" fill="var(--accent)"/>
-      </g>
-      <text x="135" y="34" text-anchor="middle" class="axis">43</text>
-      <text x="285" y="15" text-anchor="middle" class="axis">57</text>
-      <text x="435" y="13" text-anchor="middle" class="axis">59</text>
-      <text x="135" y="116" text-anchor="middle" class="axis">08-13 am</text>
-      <text x="285" y="116" text-anchor="middle" class="axis">08-13 pm → 08-24</text>
-      <text x="435" y="116" text-anchor="middle" class="axis">08-24</text>
-    </svg>
-  </div>
-
-  <div class="tl">
-    <h2>Timeline · newest first</h2>
-
-    <article class="entry">
-      <div class="date">2026-08-24 19:09</div>
-      <h3>Hardening, error bars, MCS systematics</h3>
-      <div class="kv"><span class="k">Goal:</span> Roadmap steps 4+5 (paper hardening + engineering wins), then steps 2+3 (bootstrap error bars + physics-model honesty check), with a full pipeline re-run in between.</div>
-      <div class="kv res"><span class="k">Result:</span> Pipeline is fast, error-barred, and systematics-bounded; the 6-page paper now carries statistical and physics uncertainties. 59/59 tests, CI green. UQ/MCS batch not yet committed.</div>
-      <details open>
-        <summary>Done &amp; Next</summary>
-        <div class="kv"><span class="k">Done</span></div>
-        <ul>
-          <li>Autofocus 4× faster (<code>layer_cv_score</code> extraction + two-stage coarse→fine CV scan): <code>evaluate</code> ~4 min → ~60 s, same 7.0 m; added <code>dipclean</code> enhancer (DIP + artifact removal) — best surface: offset 0.04 m, CNR 4.1 — wired into CLI + viewer.</li>
-          <li>14 new tests (→57), GitHub Actions CI (torch-free, green on first run), README rewritten; paper hardened: 10 real references, Apparatus placeholder, formal validation table, dipclean result. Committed <code>cad0732</code> + pushed.</li>
-          <li>Re-ran the entire pipeline end-to-end (~5 min): all numbers reproduced exactly (chi² 2.086, autofocus 7.0 m, offset 0.10 m); all five enhancers PASS.</li>
-          <li>Built <code>muontomo/uncertainty.py</code> (parametric Poisson bootstrap), 50+25 replicas on production: beam positions ±0.02–0.12 m (mean 0.055), amplitudes ~50% r.m.s., autofocus z* = 6.86 ± 0.12 m (68% CI); the 0.10 m beam offset is therefore partly systematic.</li>
-          <li>Added <code>scripts/mcs_systematics.py</code> (Highland MCS bound): flux-weighted blur σ ≈ 0.08 m at the ceiling, 3.5× below the 0.28 m bin footprint → ≲6% widening/amplitude bias, positions unbiased. UQ + MCS folded into the paper (abstract ±0.12 m stat; Sec 6 items v/vi) and README; 2 new tests (→59).</li>
-        </ul>
-        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
-        <ul>
-          <li>Commit + push the UQ/MCS batch (<code>uncertainty.py</code>, <code>mcs_systematics.py</code>, tests, README, paper) — excluding the user's local <code>rolling_status.zip</code>.</li>
-          <li>Roadmap step 1 remains: the detector-placement design study (simulate 3rd viewpoint / displaced repeat runs).</li>
-        </ul>
-      </details>
-    </article>
-
-    <article class="entry">
-      <div class="date">2026-08-13 16:51</div>
-      <h3>Full-room voxels, artifact cleanup, paper</h3>
-      <div class="kv"><span class="k">Goal:</span> Clean the artifacts out of the 3D reconstruction, deliver a complete-room voxel model from the two detectors, and write it all up as a paper-style report.</div>
-      <div class="kv res"><span class="k">Result:</span> The viewer shows a clean, artifact-free reconstruction plus an explorable full-room voxel cloud, and the work is documented in a self-contained 6-page paper under <code>reports/</code>. All 43 tests pass. Still nothing committed to git.</div>
-      <details>
-        <summary>Done &amp; Next</summary>
-        <div class="kv"><span class="k">Done</span></div>
-        <ul>
-          <li>Built the <code>clean</code> enhancer (<code>muontomo/enhance/artifacts.py</code>): support taper kills the boundary-blob ring, guided denoise + floor suppression flattens the background, direction-aware sharpening straightens the beams — beam CNR 0.40 → 2.48 (6×), offset 0.088 m, PASS; wired into the viewer as an "artifact-cleaned" surface.</li>
-          <li>Full-room 3D solve (<code>configs/full3d.json</code> → <code>volume_full3d.npz</code>, 1.9 M voxels) with a viewer toggle, a support taper fixing the "inverted beams" display, and a new voxel-cloud renderer (all-z colored points, density cutoff + z-cut sliders).</li>
-          <li>Viewer UX: collapsible control panel, color-palette dropdown, save-PNG button.</li>
-          <li>Wrote <code>reports/voxel_reconstruction_report.{html,pdf}</code> — a 6-page paper: achievement-first framing, autofocus section, a pedagogical "one detector → two" page, quantified depth degeneracy and the return of a 3rd detector / four-corner array.</li>
-        </ul>
-        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
-        <ul>
-          <li>Commit the whole batch — done in the following session (<code>23a8186</code>).</li>
-          <li>Optional: make <code>clean</code> the default viewer surface, or apply the cleanup on the DIP layer — done as <code>dipclean</code>.</li>
-        </ul>
-      </details>
-    </article>
-
-    <article class="entry">
-      <div class="date">2026-08-13 12:56</div>
-      <h3>Data-driven ceiling autofocus + report</h3>
-      <div class="kv"><span class="k">Goal:</span> Give the pipeline a trustworthy, data-driven ceiling-height “autofocus” and make the 3D viewer and its reporting legible and honest.</div>
-      <div class="kv res"><span class="k">Result:</span> Autofocus independently selects 7.0 m and is validated against known-truth simulations; the report and figures are legible with no duplicated content. All 43 tests pass. Nothing committed to git.</div>
-      <details>
-        <summary>Done &amp; Next</summary>
-        <div class="kv"><span class="k">Done</span></div>
-        <ul>
-          <li>Fixed viewer surface-switch bug, flipped beam relief downward, added single-detector vs two-detector surface toggle.</li>
-          <li>Built <code>muontomo/focus.py</code>: NCC quick-look + height map, and the alias-robust cross-validation height-scan as the authoritative estimate → 7.0 m.</li>
-          <li>Validated on campaign-geometry phantoms (6.6/7.0/7.4 m recovered to ~0.2 m); added <code>scripts/autofocus_validation.py</code> + committable figure.</li>
-          <li>Smoothed the CV curve with a trimmed-residual metric on a finer grid; added the 3-page per-run <code>autofocus_report.pdf</code>; wired autofocus into HUD + headline.</li>
-        </ul>
-        <div class="kv"><span class="k" style="color:var(--accent2)">Next</span></div>
-        <ul>
-          <li><code>evaluate</code> ~4 min due to the CV scan — resolved in the 08-24 session (two-stage scan, ~60 s).</li>
-          <li>Stage the autofocus work into git — done (<code>23a8186</code>).</li>
-        </ul>
-      </details>
-    </article>
-
-  </div>
+<div class="tiles">
+  <div class="tile"><div class="n">5</div><div class="k">sessions logged</div></div>
+  <div class="tile"><div class="n">72</div><div class="k">tests passing</div></div>
+  <div class="tile"><div class="n">3</div><div class="k">open follow-ups</div></div>
+  <div class="tile"><div class="n">7.0<span style="font-size:16px"> m</span></div><div class="k">autofocus height (scales with baseline)</div></div>
 </div>
-</body>
-</html>
+
+<h2>Progression</h2>
+<div class="panel"><svg viewBox="0 0 968 108" width="100%" role="img" aria-label="Project progression across 5 sessions">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="var(--edge)"/></marker></defs>
+<rect x="4" y="26" width="168" height="62" rx="9" fill="var(--card)" stroke="var(--s0)" stroke-width="2"/>
+<text x="88.0" y="18" text-anchor="middle" class="fl-d">08-13</text>
+<text x="88.0" y="48" text-anchor="middle" class="fl-t">Data-driven ceiling</text>
+<text x="88.0" y="62" text-anchor="middle" class="fl-t">autofocus + report</text>
+<rect x="202" y="26" width="168" height="62" rx="9" fill="var(--card)" stroke="var(--s1)" stroke-width="2"/>
+<text x="286.0" y="18" text-anchor="middle" class="fl-d">08-13</text>
+<text x="286.0" y="48" text-anchor="middle" class="fl-t">Full-room voxels,</text>
+<text x="286.0" y="62" text-anchor="middle" class="fl-t">artifact cleanup,</text>
+<text x="286.0" y="76" text-anchor="middle" class="fl-t">paper</text>
+<line x1="175" y1="57.0" x2="197" y2="57.0" stroke="var(--edge)" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="400" y="26" width="168" height="62" rx="9" fill="var(--card)" stroke="var(--s2)" stroke-width="2"/>
+<text x="484.0" y="18" text-anchor="middle" class="fl-d">08-24</text>
+<text x="484.0" y="48" text-anchor="middle" class="fl-t">Hardening, error bars,</text>
+<text x="484.0" y="62" text-anchor="middle" class="fl-t">MCS systematics</text>
+<line x1="373" y1="57.0" x2="395" y2="57.0" stroke="var(--edge)" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="598" y="26" width="168" height="62" rx="9" fill="var(--card)" stroke="var(--s3)" stroke-width="2"/>
+<text x="682.0" y="18" text-anchor="middle" class="fl-d">09-01</text>
+<text x="682.0" y="48" text-anchor="middle" class="fl-t">Single-detector</text>
+<text x="682.0" y="62" text-anchor="middle" class="fl-t">refocusing evaluated</text>
+<line x1="571" y1="57.0" x2="593" y2="57.0" stroke="var(--edge)" stroke-width="2" marker-end="url(#ar)"/>
+<rect x="796" y="26" width="168" height="62" rx="9" fill="var(--card)" stroke="var(--s0)" stroke-width="2"/>
+<text x="880.0" y="18" text-anchor="middle" class="fl-d">09-02</text>
+<text x="880.0" y="48" text-anchor="middle" class="fl-t">Scene-agnostic focus</text>
+<text x="880.0" y="62" text-anchor="middle" class="fl-t">metric + error bars</text>
+<line x1="769" y1="57.0" x2="791" y2="57.0" stroke="var(--edge)" stroke-width="2" marker-end="url(#ar)"/>
+</svg></div>
+
+<h2>Test suite growth</h2>
+<div class="panel"><svg viewBox="0 0 560 210" width="100%" role="img" aria-label="Test suite size per session">
+<line x1="34" y1="166.0" x2="552" y2="166.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="26" y="170.0" text-anchor="end" class="ax">0</text>
+<line x1="34" y1="124.3" x2="552" y2="124.3" stroke="var(--grid)" stroke-width="1"/>
+<text x="26" y="128.3" text-anchor="end" class="ax">20</text>
+<line x1="34" y1="82.7" x2="552" y2="82.7" stroke="var(--grid)" stroke-width="1"/>
+<text x="26" y="86.7" text-anchor="end" class="ax">40</text>
+<line x1="34" y1="41.0" x2="552" y2="41.0" stroke="var(--grid)" stroke-width="1"/>
+<text x="26" y="45.0" text-anchor="end" class="ax">60</text>
+<rect x="48.0" y="76.4" width="74" height="89.6" rx="4" fill="var(--s0)"><title>2026-08-13: 43 tests</title></rect>
+<text x="85.0" y="70.4" text-anchor="middle" class="val">43</text>
+<text x="85.0" y="186" text-anchor="middle" class="ax">08-13</text>
+<rect x="150.0" y="76.4" width="74" height="89.6" rx="4" fill="var(--s1)"><title>2026-08-13: 43 tests</title></rect>
+<text x="187.0" y="70.4" text-anchor="middle" class="val">43</text>
+<text x="187.0" y="186" text-anchor="middle" class="ax">08-13</text>
+<rect x="252.0" y="43.1" width="74" height="122.9" rx="4" fill="var(--s2)"><title>2026-08-24: 59 tests</title></rect>
+<text x="289.0" y="37.1" text-anchor="middle" class="val">59</text>
+<text x="289.0" y="186" text-anchor="middle" class="ax">08-24</text>
+<rect x="354.0" y="24.3" width="74" height="141.7" rx="4" fill="var(--s3)"><title>2026-09-01: 68 tests</title></rect>
+<text x="391.0" y="18.3" text-anchor="middle" class="val">68</text>
+<text x="391.0" y="186" text-anchor="middle" class="ax">09-01</text>
+<rect x="456.0" y="16.0" width="74" height="150.0" rx="4" fill="var(--s0)"><title>2026-09-02: 72 tests</title></rect>
+<text x="493.0" y="10.0" text-anchor="middle" class="val">72</text>
+<text x="493.0" y="186" text-anchor="middle" class="ax">09-02</text>
+<text x="34" y="204" class="ax-t">session date</text>
+</svg></div>
+
+<h2>Sessions <span style="text-transform:none;letter-spacing:0">(newest first)</span></h2>
+<div class="tl">
+<article class="ev" style="--accent:var(--s0)">
+  <div class="dot"></div>
+  <header><h3>Scene-agnostic focus metric + error bars</h3>
+    <time>2026-09-02 · 17:17</time></header>
+  <p class="goal"><span class="lbl">Goal</span> Answer the advisor&#x27;s follow-up — beam modulation depth is scene-specific (it needs the beam pitch in advance), so find a focus metric that works on an unrecognised scene, and put real uncertainties on where each metric says the ceiling is.</p>
+  <p class="res"><span class="lbl">Result</span> There is now a focus metric that needs no prior knowledge of the scene and is the better of the two on this data, and the honest statement of what single-detector refocusing achieves: it excludes a low ceiling by many σ and prefers the right one at roughly two-to-one odds. Reinforces the earlier &quot;no leverage for the iteration loop&quot; conclusion with quantified uncertainty rather than assertion. 72/72 tests, still on branch <code>refocusing</code>, nothing committed.</p>
+  <details><summary>4 changes · 3 follow-ups</summary>
+    <div class="sub">Done</div><ul><li>Showed why the obvious generic replacements fail: gradient energy, Laplacian variance, total variation and raw high-frequency power all peak at the edge of the scan, because these maps are noise-dominated at high frequency (Poisson floor ≈ 3× the signal power) and the shear smooths noise along with signal, so raw sharpness just tracks how much shear was applied.</li><li>Built the scene-agnostic alternative (<code>focus.signal_band</code>, <code>focus.spectral_focus</code>): subtract the <em>analytic</em> Poisson floor from the 2-D power spectrum (per-bin opacity variance follows from the counts, so it is computed not fitted), then integrate what survives over the frequency band the scene itself exceeds that floor. No assumed period. The detected band (structures ~0.75–11 m) contains the 1.58 m beam pitch without ever being told it, and it separates refocused from un-refocused by 16% where modulation depth manages 1%. Stable over nine SNR-threshold / band-width combinations.</li><li>Added a 400-replica Poisson bootstrap of both metrics (<code>bootstrap_metrics</code>, reusing <code>uncertainty.resample_tmaps</code>) — this was the substantive correction of the session: <strong>the peak is a preference, not a measurement.</strong> 7 m wins 66% of replicas for signal-band power and 53% for beam modulation, with most of the rest at 10 m; across 5–10 m both vary by only ~7%, comparable to their own ±1σ bands. An earlier 40-replica run had said 70% for modulation, so the sample size mattered.</li><li>Rebuilt Figure 3 three times before it communicated: it is now (a) both metrics vs assumed height with ±1σ/±2σ bands and (b) the argmax distribution with binomial errors. The spectrum diagnostic moved out of the paper into the memo only, per user direction. Paper §3.7 restructured into scene-specific / scene-agnostic, README updated, memo fully rewritten around the metric question; 4 new tests (→72).</li></ul><div class="sub">Next</div><ul class="nx"><li>Commit the <code>refocusing</code> branch (excluding the local <code>rolling_status.zip</code>) and let CI verify — now two sessions overdue.</li><li>Send the memo; the open question back to the advisor is where his <code>d = 2.4 m</code> comes from.</li><li>Unchanged: settle the absolute scale by survey, fix the aperture/pose/height degeneracy, fiducial marker at Megiddo, roadmap step 1.</li></ul>
+  </details>
+</article>
+<article class="ev" style="--accent:var(--s3)">
+  <div class="dot"></div>
+  <header><h3>Single-detector refocusing evaluated</h3>
+    <time>2026-09-01 · 15:05</time></header>
+  <p class="goal"><span class="lbl">Goal</span> Assess the advisor&#x27;s proposal that single-detector angular refocusing and two-detector parallax focusing are the same operation, and that an iterative assume-H → sharpen → re-measure-H loop plus closed-form triangulation would sharpen the result.</p>
+  <p class="res"><span class="lbl">Result</span> The advisor&#x27;s physics is confirmed and quantified, and the engineering conclusion is a clean negative: refocusing must stay out of the inversion, and the iteration loop has no leverage on this geometry. Net gains kept are the triangulation cross-check and the aperture finding. Production re-run end-to-end and reproduces exactly (χ² 2.086, offset 0.100 m, autofocus 7.0 m) now carrying triangulation; paper at 7 pages with new §3.6/§3.7 and uncertainty item (vii); 68/68 tests pass. All on branch <code>refocusing</code>, nothing committed.</p>
+  <details><summary>6 changes · 4 follow-ups</summary>
+    <div class="sub">Done</div><ul><li>Established that the DAQ&#x27;s <code>XY01m..XY10m</code> histograms <em>are</em> the proposed shear <code>t_corr = t + b/H</code>, not metric back-projections: under the shear <code>E[t_corr]H − E[t_∞]H = E[b]</code> is constant to 0.25 mm (0.1934 m) across H = 1–10 m, in both detectors and the sky file. <code>selfcal.py</code> had asserted the opposite (&quot;carries no depth information&quot;); docstring corrected, and the same stale claim fixed in the README.</li><li>Measured the effect on real data (<code>scripts/refocus_analysis.py</code> → <code>reports/refocus_analysis.{png,json}</code>): focusing is <strong>real</strong> — beam modulation peaks at the independently-known 7.0 m ceiling in each detector separately — but <strong>weak</strong>, varying only 3.1% over 5–10 m while collapsing 5× by H=1 m. Beam FWHM gain is 4.4% (0.534 → 0.511 m).</li><li>Ran a 6-arm A/B through the full pipeline: refocused input is <strong>rejected</strong> (beam offset 0.100 → 1.404 m, far past the 0.15 m gate). Root cause is structural — <code>t_corr = X/H</code> indexes a source position, not a direction, so the forward model&#x27;s ray parametrization only coincides at <code>z = H</code>. This also kills the iteration loop: the sharpening step destroys the parallax the height scan reads.</li><li>Built the requested joint triangulation least-squares (<code>beams.triangulate</code> + <code>beam_peaks_subbin</code>): <strong>z = 6.955 ± 0.086 m</strong> over 8 features / 16 observations, χ²/dof 0.20 — independent of both solver and CV autofocus, and tighter than the bootstrap. Sub-bin refinement was essential (one 0.04 tan bin ≈ 1 m of single-pair height).</li><li>Incorporated the advisor&#x27;s formal trigonometry note: his <code>tan θ_x,corr = x_s/H</code> derivation matches what I found independently (a refocused bin is a source position over H), and his closed-form <code>z = d/(tanθ₂cosφ₂ − tanθ₁cosφ₁)</code> is the two-ray case of our joint fit. But his <strong>d = 2.4 m</strong> vs our calibrated <strong>1.916 m</strong> matters: since <code>z ∝ d</code>, that is 6.96 m vs 8.71 m of ceiling. Added <code>beams.scale_closure</code> — each detector measures the beam angular period alone (0.2329 / 0.2321 tan-units), so <code>pitch = z × period</code> closes the (baseline, height, pitch) triple and any one surveyed length fixes the other two. Angles are scale-degenerate; one tape measure is required.</li><li>Found and investigated a latent model bug: <code>aperture_m = 0.65</code> vs a measured 0.354 m active width (23 bars × 1.538 cm); survived because acceptance constrains only the ratio a/h. Correcting it improves χ²/CNR/noise but fails the beam gate (0.236 m), and re-running selfcal on top makes it worse (0.416 m, CNR 3.18 — sharp beams in the wrong place). Left production unchanged; documented as the largest known instrumental systematic.</li></ul><div class="sub">Next</div><ul class="nx"><li>Commit the <code>refocusing</code> branch (excluding the local <code>rolling_status.zip</code>) and let CI verify.</li><li><strong>Settle the absolute scale</strong>: survey either the detector separation or the ceiling beam pitch. Everything scales with it and no algorithm work substitutes for it; the advisor&#x27;s d = 2.4 m would make the ceiling 8.71 m, not 6.96 m.</li><li>The aperture/pose/height degeneracy needs a self-calibration objective that includes model-free beam positions.</li><li>A fiducial marker at Megiddo, to break the circularity that let the aperture error survive; and roadmap step 1, the placement study, still open.</li></ul>
+  </details>
+</article>
+<article class="ev" style="--accent:var(--s2)">
+  <div class="dot"></div>
+  <header><h3>Hardening, error bars, MCS systematics</h3>
+    <time>2026-08-24 · 19:09</time></header>
+  <p class="goal"><span class="lbl">Goal</span> Roadmap steps 4+5 (paper hardening + engineering wins), then steps 2+3 (bootstrap error bars + physics-model honesty check), with a full pipeline re-run in between.</p>
+  <p class="res"><span class="lbl">Result</span> Pipeline is fast, error-barred, and systematics-bounded; the 6-page paper now carries statistical and physics uncertainties. 59/59 tests, CI green. UQ/MCS batch not yet committed.</p>
+  <details><summary>5 changes · 2 follow-ups</summary>
+    <div class="sub">Done</div><ul><li>Autofocus 4× faster (<code>layer_cv_score</code> extraction + two-stage coarse→fine CV scan): <code>evaluate</code> ~4 min → ~60 s, same 7.0 m; added <code>dipclean</code> enhancer (DIP + artifact removal) — best surface: offset 0.04 m, CNR 4.1 — wired into CLI + viewer.</li><li>14 new tests (→57), GitHub Actions CI (torch-free, green on first run), README rewritten; paper hardened: 10 real references, Apparatus placeholder, formal validation table, dipclean result. Committed <code>cad0732</code> + pushed.</li><li>Re-ran the entire pipeline end-to-end (~5 min): all numbers reproduced exactly (chi² 2.086, autofocus 7.0 m, offset 0.10 m); all five enhancers PASS.</li><li>Built <code>muontomo/uncertainty.py</code> (parametric Poisson bootstrap) and ran 50+25 replicas on production: beam positions ±0.02–0.12 m (mean 0.055), amplitudes ~50% r.m.s., autofocus z* = 6.86 ± 0.12 m (68% CI); the 0.10 m beam offset is therefore partly systematic.</li><li>Added <code>scripts/mcs_systematics.py</code> (Highland multiple-Coulomb-scattering bound): flux-weighted blur σ ≈ 0.08 m at the ceiling, 3.5× below the 0.28 m bin footprint → ≲6% widening/amplitude bias, positions unbiased. UQ + MCS folded into the paper (abstract ±0.12 m stat; Sec 6 items v/vi) and README; 2 new tests (→59).</li></ul><div class="sub">Next</div><ul class="nx"><li>Commit + push the UQ/MCS batch (<code>uncertainty.py</code>, <code>mcs_systematics.py</code>, tests, README, paper) — excluding the user&#x27;s local <code>rolling_status.zip</code>.</li><li>Roadmap step 1 remains: the detector-placement design study (simulate 3rd viewpoint / displaced repeat runs).</li></ul>
+  </details>
+</article>
+<article class="ev" style="--accent:var(--s1)">
+  <div class="dot"></div>
+  <header><h3>Full-room voxels, artifact cleanup, paper</h3>
+    <time>2026-08-13 · 16:51</time></header>
+  <p class="goal"><span class="lbl">Goal</span> Clean the artifacts out of the 3D reconstruction, deliver a complete-room voxel model from the two detectors, and write it all up as a paper-style report.</p>
+  <p class="res"><span class="lbl">Result</span> The viewer shows a clean, artifact-free reconstruction plus an explorable full-room voxel cloud, and the work is documented in a self-contained 6-page paper under <code>reports/</code>. All 43 tests pass. Still nothing committed to git.</p>
+  <details><summary>4 changes · 2 follow-ups</summary>
+    <div class="sub">Done</div><ul><li>Built the <code>clean</code> enhancer (<code>muontomo/enhance/artifacts.py</code>): support taper kills the boundary-blob ring, guided denoise + floor suppression flattens the background, direction-aware sharpening straightens the beams — beam CNR 0.40 → 2.48 (6×), offset 0.088 m, PASS; wired into the viewer as an &quot;artifact-cleaned&quot; surface.</li><li>Full-room 3D solve (<code>configs/full3d.json</code> → <code>volume_full3d.npz</code>, 1.9 M voxels) with a viewer toggle, a support taper fixing the &quot;inverted beams&quot; display, and a new voxel-cloud renderer (all-z colored points, density cutoff + z-cut sliders).</li><li>Viewer UX: collapsible control panel, color-palette dropdown (viridis/inferno/magma/turbo/grayscale), save-PNG button.</li><li>Wrote <code>reports/voxel_reconstruction_report.{html,pdf}</code> — a 6-page paper: achievement-first framing (full-room model from only two detectors), autofocus section with the two-detector-disagreement and beam-verify figures, a pedagogical &quot;one detector → two&quot; page (angular shadow → 2D map → parallax → fused 3D), quantified depth degeneracy (28% of mass in 6–8 m, peak at 4.2 m) and what a 3rd detector / four-corner array would buy (δz ~1 m → 0.4 / 0.2 m).</li></ul><div class="sub">Next</div><ul class="nx"><li>Commit the whole batch (enhance <code>clean</code>, full3d config, viewer features, focus/autofocus, <code>scripts/</code>, <code>reports/</code>) — user has repeatedly deferred; everything is ready to stage.</li><li>Optional: make <code>clean</code> the default viewer surface, or apply the artifact cleanup on top of the DIP layer (best positions + artifact removal).</li></ul>
+  </details>
+</article>
+<article class="ev" style="--accent:var(--s0)">
+  <div class="dot"></div>
+  <header><h3>Data-driven ceiling autofocus + report</h3>
+    <time>2026-08-13 · 12:56</time></header>
+  <p class="goal"><span class="lbl">Goal</span> Give the pipeline a trustworthy, data-driven ceiling-height &quot;autofocus&quot; and make the 3D viewer and its reporting legible and honest.</p>
+  <p class="res"><span class="lbl">Result</span> Autofocus independently selects 7.0 m and is validated against known-truth simulations; the report and figures are legible with no duplicated content. All 43 tests pass. Nothing committed to git.</p>
+  <details><summary>5 changes · 2 follow-ups</summary>
+    <div class="sub">Done</div><ul><li>Fixed viewer surface-switch bug (meshes were stacking, not replacing), flipped beam relief to hang downward toward the detectors, and added a single-detector (pos0 / pos1) vs. two-detector surface toggle.</li><li>Built <code>muontomo/focus.py</code>: a model-free two-view NCC &quot;quick-look&quot; + per-region height map, and promoted the alias-robust cross-validation height-scan (fit one detector, predict the other) as the authoritative estimate → 7.0 m (matches the reconstruction chi²).</li><li>Validated against synthetic ground truth: campaign-geometry phantoms with ceilings injected at 6.6/7.0/7.4 m are recovered to ~0.2 m; added <code>scripts/autofocus_validation.py</code> + committable <code>reports/autofocus_validation.png</code>.</li><li>Smoothed the CV curve with a trimmed-residual metric (removes aliasing-outlier spikes, same 7.0 m minimum) on a finer 0.1 m grid.</li><li>Added a 3-page per-run <code>autofocus_report.pdf</code> (<code>muontomo/focus_report.py</code>, scientific prose, de-duplicated figure) generated on every <code>evaluate</code>; wired autofocus into the viewer HUD and the evaluate headline.</li></ul><div class="sub">Next</div><ul class="nx"><li><code>evaluate</code> now takes ~4 min because of the 0.1 m CV scan — consider widening the step or narrowing the range if that&#x27;s too slow routinely.</li><li>Stage the autofocus work into git when ready (<code>focus.py</code>, <code>focus_report.py</code>, <code>scripts/</code>, <code>reports/</code>, the <code>layered_fit</code> trim option, viewer/evaluate wiring).</li></ul>
+  </details>
+</article>
+</div>
+
+<footer>Source of truth: <code>rolling_status.md</code> — append-only.
+This dashboard is regenerated in full on every update.</footer>
+</div></body></html>

@@ -38,11 +38,48 @@ class TransmissionMap:
         return 0.5 * (self.tyedges[:-1] + self.tyedges[1:])
 
 
+REFOCUS_HEIGHTS_M = {"XY01m": 1.0, "XY02m": 2.0, "XY05m": 5.0, "XY07m": 7.0, "XY10m": 10.0}
+
+
+def refocus_height_m(hist: str) -> float | None:
+    """The assumed source height a DAQ refocus histogram was sheared at, or None."""
+    return REFOCUS_HEIGHTS_M.get(hist)
+
+
 def prepare_angular_hist(h: Hist2D, binning: BinningConfig) -> Hist2D:
-    """Crop the fine txty histogram to the acceptance window and rebin for statistics."""
+    """Crop the fine txty histogram to the acceptance window and rebin for statistics.
+
+    For a refocused XY0*m histogram with `refocus_origin_m` set, first undo the
+    constant translation the bar-coordinate origin injects into the shear (see
+    BinningConfig). Shifting the bin edges is exact -- the counts never move.
+    """
+    z = refocus_height_m(binning.hist)
+    if z is not None and binning.refocus_origin_m:
+        shift = binning.refocus_origin_m / z
+        h = Hist2D(values=h.values, xedges=h.xedges - shift, yedges=h.yedges - shift, name=h.name)
     t = binning.t_max
     h = h.crop((-t, t), (-t, t))
-    return h.rebin(binning.rebin)
+    return _trim_to_multiple(h, binning.rebin).rebin(binning.rebin)
+
+
+def _trim_to_multiple(h: Hist2D, factor: int) -> Hist2D:
+    """Drop the fewest outermost bins needed for both axes to divide by `factor`.
+
+    A shifted (refocused) edge grid no longer lands flush on the +-t_max crop, so the
+    surviving bin count can miss a multiple of `rebin` by a few bins. Excess is removed
+    from the outermost -- lowest-acceptance -- bins, split across the two ends.
+    """
+    nx, ny = h.values.shape
+    ex, ey = nx % factor, ny % factor
+    if not ex and not ey:
+        return h
+    x0, y0 = ex // 2, ey // 2
+    return Hist2D(
+        values=h.values[x0 : nx - (ex - x0), y0 : ny - (ey - y0)],
+        xedges=h.xedges[x0 : nx - (ex - x0) + 1],
+        yedges=h.yedges[y0 : ny - (ey - y0) + 1],
+        name=h.name,
+    )
 
 
 def estimate_scale(n_cafe: np.ndarray, n_sky: np.ndarray, cal: CalibrationConfig) -> float:
